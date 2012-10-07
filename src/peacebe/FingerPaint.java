@@ -22,21 +22,18 @@ import org.json.JSONObject;
 
 import peacebe.user.R;
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.*;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import peacebe.PeaceBeServer;
 
-public class FingerPaint extends Activity
-        implements ColorPickerDialog.OnColorChangedListener {    
+public class FingerPaint extends Activity {    
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
@@ -46,13 +43,14 @@ public class FingerPaint extends Activity
 	private String app;
 	private String clientState="main";
 	//private PeaceBeServer.FakePeaceBeServer srv;
-	private PeaceBeServer srv;
+	private PeaceBeServer srv;   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fingerpaint);
         //srv = new PeaceBeServer().getFake();
         srv = new PeaceBeServer();
+
         paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
         nextButton = (Button) findViewById(R.id.nextButton);
         nextButton.setOnClickListener(new OnClickListener()
@@ -121,232 +119,11 @@ public class FingerPaint extends Activity
                 
 			}
         });
-        mPaint = new Paint();
-        mPaint.setAntiAlias(true);
-        mPaint.setDither(true);
-        mPaint.setColor(0xFFFF0000);
-        mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeJoin(Paint.Join.ROUND);
-        mPaint.setStrokeCap(Paint.Cap.ROUND);
-        mPaint.setStrokeWidth(12);
-        
-        mEmboss = new EmbossMaskFilter(new float[] { 1, 1, 1 },
-                                       0.4f, 6, 3.5f);
-
-        mBlur = new BlurMaskFilter(8, BlurMaskFilter.Blur.NORMAL);
-    }
-    
-    private Paint       mPaint;
-    private MaskFilter  mEmboss;
-    private MaskFilter  mBlur;
-    
-    public void colorChanged(int color) {
-        mPaint.setColor(color);
-    }
-
-    public class GroupingResultView extends View {
-    	JSONObject mResult;
-    	public GroupingResultView(Context c,  int vHeight, int vWidth){
-    		super(c);
-    	}
-
-		public void setResult(JSONObject m) {
-			// TODO Auto-generated method stub
-			mResult = m;
-		}
-        protected void onDraw(Canvas canvas) {
-            canvas.drawColor(0xFFFFFFAA);
-            Bitmap bitmap=null;
-			try {
-				bitmap = PeaceBeServer.getBitmapFromString(mResult.getString("photo"));
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-            canvas.drawBitmap(bitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
-        }
-    }
-    public class VoteView extends View {
-    	private  JSONArray mCandidate;
-    	private int mVote=0;
-    	public VoteView(Context c,  int vHeight, int vWidth){
-    		super(c);
-    	}
-
-		public int getVote() {
-			// TODO Auto-generated method stub
-			try {
-				return  mCandidate.getJSONObject(mVote).getInt("id");
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return -1;
-			}
-		}
-
-		public void setCandidate(JSONArray q) {
-			// TODO Auto-generated method stub
-			mCandidate = q;
-		}
-	    private void drawPict(Canvas canvas, int x, int y, int w, int h,
-                int location) {
-			canvas.save();
-			canvas.translate(x, y);
-			canvas.clipRect(0, 0, w, h);
-			canvas.scale(0.5f, 0.5f);
-			canvas.scale(1, 1, w, h);
-			Bitmap bitmap = null;
-			try {
-				bitmap = PeaceBeServer.getBitmapFromString(mCandidate.getJSONObject(location).getString("paint"));
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			if(location == mVote){
-				canvas.drawColor(0xFFFFFFAA);
-			}
-			canvas.drawBitmap(bitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
-			canvas.restore();
-		}
-        @Override
-        public boolean onTouchEvent(MotionEvent event) {
-            float x = event.getX();
-            float y = event.getY();
-            
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    touch_start(x, y);
-                    invalidate();
-                    break;
-            }
-            return true;
-        }
-        private void touch_start(float x, float y) {
-        	setVote(x, y);
-        }
-        protected void setVote(float x, float y){
-            int mX = getWidth()/2;
-            int mY = getHeight()/2;
-            if (x < mX && y < mY){
-            	mVote = 0;
-            } else if (x > mX && y < mY){
-            	mVote = 1;
-            } else if (x < mX && y > mY){
-            	mVote = 2;
-            } else if (x > mX && y > mY){
-            	mVote = 3;
-            }
-        }
-        protected void onDraw(Canvas canvas) {
-            canvas.drawColor(0xFFFFAAAA);
-            int x = getWidth()/2;
-            int y = getHeight()/2;
-            drawPict(canvas, 0, 0, x, y,  0);
-            drawPict(canvas, x, 0, x, y, 1);
-            drawPict(canvas, 0, y, x, y,  2);
-            drawPict(canvas, x, y, x, y, 3);
-        }
-    }
-    public class PaintView extends View {
-        
-        private static final float MINP = 0.25f;
-        private static final float MAXP = 0.75f;
-        
-        private Bitmap  mBitmap;
-        private Canvas  mCanvas;
-        private Path    mPath;
-        private Paint   mBitmapPaint;
-        
-        public PaintView(Context c, int vHeight, int vWidth) {
-            super(c);
-            //mBitmap = Bitmap.createBitmap(320, 480, Bitmap.Config.ARGB_8888);
-            mBitmap = Bitmap.createBitmap(vWidth, vHeight, Bitmap.Config.ARGB_8888);
-            mCanvas = new Canvas(mBitmap);
-            mPath = new Path();
-            mBitmapPaint = new Paint(Paint.DITHER_FLAG);
-        }
-        public Bitmap getBitmap()
-        {
-        	return mBitmap;
-        }
-        @Override
-        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-            super.onSizeChanged(w, h, oldw, oldh);
-        }
-        
-        @Override
-        protected void onDraw(Canvas canvas) {
-            canvas.drawColor(0xFFAAAAAA);
-            
-            canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
-            
-            canvas.drawPath(mPath, mPaint);
-        }
-        
-        private float mX, mY;
-        private static final float TOUCH_TOLERANCE = 4;
-        
-        private void touch_start(float x, float y) {
-            mPath.reset();
-            mPath.moveTo(x, y);
-            mX = x;
-            mY = y;
-        }
-        private void touch_move(float x, float y) {
-            float dx = Math.abs(x - mX);
-            float dy = Math.abs(y - mY);
-            if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
-                mPath.quadTo(mX, mY, (x + mX)/2, (y + mY)/2);
-                mX = x;
-                mY = y;
-            }
-        }
-        private void touch_up() {
-            mPath.lineTo(mX, mY);
-            // commit the path to our offscreen
-            mCanvas.drawPath(mPath, mPaint);
-            // kill this so we don't double draw
-            mPath.reset();
-        }
-        
-        @Override
-        public boolean onTouchEvent(MotionEvent event) {
-            float x = event.getX();
-            float y = event.getY();
-            
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    touch_start(x, y);
-                    invalidate();
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    touch_move(x, y);
-                    invalidate();
-                    break;
-                case MotionEvent.ACTION_UP:
-                    touch_up();
-                    invalidate();
-                    break;
-            }
-            return true;
-        }
-    }
-    
-    private static final int COLOR_MENU_ID = Menu.FIRST;
-    private static final int EMBOSS_MENU_ID = Menu.FIRST + 1;
-    private static final int BLUR_MENU_ID = Menu.FIRST + 2;
-    private static final int ERASE_MENU_ID = Menu.FIRST + 3;
-    private static final int SRCATOP_MENU_ID = Menu.FIRST + 4;
+     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        
-        menu.add(0, COLOR_MENU_ID, 0, "Color").setShortcut('3', 'c');
-        menu.add(0, EMBOSS_MENU_ID, 0, "Emboss").setShortcut('4', 's');
-        menu.add(0, BLUR_MENU_ID, 0, "Blur").setShortcut('5', 'z');
-        menu.add(0, ERASE_MENU_ID, 0, "Erase").setShortcut('5', 'z');
-        menu.add(0, SRCATOP_MENU_ID, 0, "SrcATop").setShortcut('5', 'z');
 
         /****   Is this the mechanism to extend with filter effects?
         Intent intent = new Intent(null, getIntent().getData());
@@ -361,43 +138,18 @@ public class FingerPaint extends Activity
     
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        super.onPrepareOptionsMenu(menu);
-        return true;
+    	menu.clear();
+    	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
+    	if (view != null) {
+    		view.onPrepareOptionsMenu(menu);
+    	}
+        return super.onPrepareOptionsMenu(menu);
     }
     
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        mPaint.setXfermode(null);
-        mPaint.setAlpha(0xFF);
-
-        switch (item.getItemId()) {
-            case COLOR_MENU_ID:
-                new ColorPickerDialog(this, this, mPaint.getColor()).show();
-                return true;
-            case EMBOSS_MENU_ID:
-                if (mPaint.getMaskFilter() != mEmboss) {
-                    mPaint.setMaskFilter(mEmboss);
-                } else {
-                    mPaint.setMaskFilter(null);
-                }
-                return true;
-            case BLUR_MENU_ID:
-                if (mPaint.getMaskFilter() != mBlur) {
-                    mPaint.setMaskFilter(mBlur);
-                } else {
-                    mPaint.setMaskFilter(null);
-                }
-                return true;
-            case ERASE_MENU_ID:
-                mPaint.setXfermode(new PorterDuffXfermode(
-                                                        PorterDuff.Mode.CLEAR));
-                return true;
-            case SRCATOP_MENU_ID:
-                mPaint.setXfermode(new PorterDuffXfermode(
-                                                    PorterDuff.Mode.SRC_ATOP));
-                mPaint.setAlpha(0x80);
-                return true;
-        }
+    	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
+    	view.onOptionsItemSelected(item);
         return super.onOptionsItemSelected(item);
     }
 }
