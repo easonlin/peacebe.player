@@ -12,20 +12,12 @@
         android:icon="@drawable/peacebe_user"
         android:label="@string/appName" >
         <activity
-            android:name="peacebe.Player"
+            android:name="peacebe.PlayerActivity"
             android:label="@string/appName" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name="peacebe.userActivity"
-            android:label="@string/appName" >
-        </activity>
-		<activity
-            android:name="peacebe.paintingActivity"
-            android:label="@string/appName" >
         </activity>
     </application>
 
