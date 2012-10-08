@@ -33,7 +33,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import peacebe.PeaceBeServer;
 
-public class FingerPaint extends Activity {    
+public class Player extends Activity {    
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
