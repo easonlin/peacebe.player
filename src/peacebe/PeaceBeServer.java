@@ -110,6 +110,9 @@ public class PeaceBeServer {
 	public FakePeaceBeServer getFake(){
 		return new FakePeaceBeServer();
 	}
+	public void setPlayer(int player){
+		mPlayer = player;
+	}
 	private int mPlayer = 5;
 	//private String mBaseURL = "http://ec2-175-41-156-14.ap-southeast-1.compute.amazonaws.com";
 	private String mBaseURL = "http://175.41.156.14";

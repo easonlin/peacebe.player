@@ -22,6 +22,9 @@ import org.json.JSONObject;
 
 import peacebe.user.R;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.*;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,6 +34,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 import peacebe.PeaceBeServer;
 
 public class PlayerActivity extends Activity {    
@@ -42,28 +46,58 @@ public class PlayerActivity extends Activity {
 	private String state;
 	private String app;
 	private String clientState;
-	private PeaceBeServer.FakePeaceBeServer srv;
-	//private PeaceBeServer srv;   
+	private SharedPreferences settings;
+	private SharedPreferences.Editor editor;
+	//private PeaceBeServer.FakePeaceBeServer srv = new PeaceBeServer().getFake();
+	private PeaceBeServer srv = new PeaceBeServer();   
+	public void initView(){
+        int vHeight = paintFrame.getHeight();
+        int vWidth = paintFrame.getWidth();
+        paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
+        voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
+        groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
+	}
+	public void initPlayer(){
+        final CharSequence[] items = {"Player1", "Player2", "Player3","Player4","Player5","Player6","Player7","Player8"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Pick a player");
+        builder.setItems(items, new DialogInterface.OnClickListener(){
+            public void onClick(DialogInterface dialogInterface, int item) {
+                Toast.makeText(getApplicationContext(), items[item], Toast.LENGTH_SHORT).show();
+                int player = item+1;
+                editor.putInt("player", player);
+                editor.commit();
+                srv.setPlayer(player);
+                return;
+            }
+        });
+        builder.create().show();		
+	}
+	public void initClient(){
+		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
+		editor = settings.edit();
+		int player = settings.getInt("player", 0);
+		if (player == 0) {
+			initPlayer();
+		}
+		else {
+			srv.setPlayer(player);
+		}
+        clientState="main";
+	}
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fingerpaint);
-        srv = new PeaceBeServer().getFake();
-        //srv = new PeaceBeServer();
-
         paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
         nextButton = (Button) findViewById(R.id.nextButton);
         nextButton.setOnClickListener(new OnClickListener()
         {
-
         	public void onClick(View v) {
-        		if (paintView==null){
-                    int vHeight = paintFrame.getHeight();
-                    int vWidth = paintFrame.getWidth();
-                    paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
-                    voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
-                    groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
-                    clientState="main";
+        		if (paintView == null) {
+        			paintFrame.removeAllViews();
+        	        initClient();
+        	        initView();
         		}
         		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
         		if (clientState=="main") {
@@ -125,6 +159,10 @@ public class PlayerActivity extends Activity {
         });
      }
     public boolean doLeave() {
+    	paintFrame.removeAllViews();
+    	initClient();
+    	initView();
+    	initPlayer();
 		return false;
     }
     
@@ -158,10 +196,13 @@ public class PlayerActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
     	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
-    	view.onOptionsItemSelected(item);
+    	if (view != null){
+    		view.onOptionsItemSelected(item);
+    	}
         switch (item.getItemId()) {
         	case LEAVE_MENU_ID:
         		doLeave();
+        		return true;
         }
         return super.onOptionsItemSelected(item);
     }
