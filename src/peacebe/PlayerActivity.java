@@ -114,6 +114,14 @@ public class PlayerActivity extends Activity {
 						e.printStackTrace();
 					}
 	        		if (app.equals("grouping") && state.equals("painting")){
+	          			new AlertDialog.Builder(paintFrame.getContext())
+	        	        .setTitle("Task")
+	        	        .setMessage("Draw your favorite animal.")
+	        	        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+	        	            public void onClick(DialogInterface dialog, int which) { 
+	        	            }
+	        	         })
+	        	     	.show();
 	        			paintFrame.addView(paintView);
 	        			clientState="painting";
 	        			Log.i(getLocalClassName(), "main painting");
