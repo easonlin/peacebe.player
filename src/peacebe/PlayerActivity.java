@@ -33,7 +33,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import peacebe.PeaceBeServer;
 
-public class Player extends Activity {    
+public class PlayerActivity extends Activity {    
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
@@ -41,7 +41,7 @@ public class Player extends Activity {
 	private GroupingResultView groupingResultView;
 	private String state;
 	private String app;
-	private String clientState="main";
+	private String clientState;
 	//private PeaceBeServer.FakePeaceBeServer srv;
 	private PeaceBeServer srv;   
     @Override
@@ -63,6 +63,7 @@ public class Player extends Activity {
                     paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
                     voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
                     groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
+                    clientState="main";
         		}
         		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
         		if (clientState=="main") {
@@ -120,7 +121,10 @@ public class Player extends Activity {
 			}
         });
      }
-
+    public boolean doLeave() {
+		return false;
+    }
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
@@ -136,6 +140,7 @@ public class Player extends Activity {
         return true;
     }
     
+    private static final int LEAVE_MENU_ID = Menu.FIRST+6;
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
     	menu.clear();
@@ -143,6 +148,7 @@ public class Player extends Activity {
     	if (view != null) {
     		view.onPrepareOptionsMenu(menu);
     	}
+    	menu.add(0, LEAVE_MENU_ID, 0, "Leave").setShortcut('6', 'l');
         return super.onPrepareOptionsMenu(menu);
     }
     
@@ -150,6 +156,10 @@ public class Player extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
     	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
     	view.onOptionsItemSelected(item);
+        switch (item.getItemId()) {
+        	case LEAVE_MENU_ID:
+        		doLeave();
+        }
         return super.onOptionsItemSelected(item);
     }
 }
