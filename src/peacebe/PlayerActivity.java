@@ -42,14 +42,14 @@ public class PlayerActivity extends Activity {
 	private String state;
 	private String app;
 	private String clientState;
-	//private PeaceBeServer.FakePeaceBeServer srv;
-	private PeaceBeServer srv;   
+	private PeaceBeServer.FakePeaceBeServer srv;
+	//private PeaceBeServer srv;   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fingerpaint);
-        //srv = new PeaceBeServer().getFake();
-        srv = new PeaceBeServer();
+        srv = new PeaceBeServer().getFake();
+        //srv = new PeaceBeServer();
 
         paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
         nextButton = (Button) findViewById(R.id.nextButton);
@@ -98,20 +98,23 @@ public class PlayerActivity extends Activity {
 	        		}
         		} else {
 	        		if (app.equals("grouping") && clientState.equals("painting")){
-	        			paintFrame.removeView(paintView);
+	        			//paintFrame.removeView(paintView);
+	        			paintFrame.removeAllViews();
 	        			Bitmap bitmap = paintView.getBitmap();
 	        			srv.sendPaint(bitmap);
 	        			clientState="main";
 	        			Log.i(getLocalClassName(), "grouping painting");
 	        		} else if (app.equals("grouping") && clientState.equals("voting")) {
-	        			paintFrame.removeView(voteView);
+	        			//paintFrame.removeView(voteView);
+	        			paintFrame.removeAllViews();
 	        			int id =voteView.getVote();
 	        			srv.sendVote(id);
 	        			clientState="main";
 	        			Log.i(getLocalClassName(), "grouping voting");
 	        			Log.i(getLocalClassName(), "voted " + id);
 	        		} else if (app.equals("grouping") && clientState.equals("result")) {
-	        			paintFrame.removeView(groupingResultView);
+	        			//paintFrame.removeView(groupingResultView);
+	        			paintFrame.removeAllViews();
 	        			clientState="main";
 	        			Log.i(getLocalClassName(), "grouping stop");
 	        		}	
