@@ -33,20 +33,6 @@ public class VoteView extends ActivityView {
 		// TODO Auto-generated method stub
 		mCandidate = q;
 	}
-	public Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight) {
-	int width = bm.getWidth();
-	int height = bm.getHeight();
-	float scaleWidth = ((float) newWidth) / width;
-	float scaleHeight = ((float) newHeight) / height;
-	// create a matrix for the manipulation
-	Matrix matrix = new Matrix();
-	// resize the bit map
-	matrix.postScale(scaleWidth, scaleHeight);
-	// recreate the new Bitmap
-	Bitmap resizedBitmap = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
-	return resizedBitmap;
-	}
-
 
     private void drawPict(Canvas canvas, int x, int y, int w, int h,
             int location) {
@@ -62,7 +48,7 @@ public class VoteView extends ActivityView {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Bitmap resizedBitmap = getResizedBitmap(bitmap, w, h);
+		Bitmap resizedBitmap = PeaceBeServer.getResizedBitmap(bitmap, w, h);
 		if(location == mVote){
 			canvas.drawColor(0xFFFFFFAA);
 		}

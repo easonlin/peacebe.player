@@ -28,7 +28,10 @@ public class GroupingResultView extends ActivityView {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-        canvas.drawBitmap(bitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
+        int w = getWidth();
+        int h = getHeight();
+		Bitmap resizedBitmap = PeaceBeServer.getResizedBitmap(bitmap, w, h);
+        canvas.drawBitmap(resizedBitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
     }
 
 	@Override

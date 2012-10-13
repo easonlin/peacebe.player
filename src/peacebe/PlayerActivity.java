@@ -27,6 +27,7 @@ import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.*;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -34,6 +35,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import peacebe.PeaceBeServer;
 
@@ -43,21 +45,152 @@ public class PlayerActivity extends Activity {
 	private PaintView paintView;
 	private VoteView voteView;
 	private GroupingResultView groupingResultView;
+	private ProgressBar pgbWaiting;
+	private Handler handler = new Handler();
 	private String state;
 	private String app;
-	private String clientState;
-	private SharedPreferences settings;
-	private SharedPreferences.Editor editor;
-	//private PeaceBeServer.FakePeaceBeServer srv = new PeaceBeServer().getFake();
-	private PeaceBeServer srv = new PeaceBeServer();   
-	public void initView(){
+	private String clientState="init";
+	public boolean initTaskViews() {
         int vHeight = paintFrame.getHeight();
         int vWidth = paintFrame.getWidth();
+        if(vHeight <= 0 || vWidth <= 0) {
+        	return false; 
+        }
         paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
         voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
         groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
+        return true;
 	}
-	public void initPlayer(){
+	public void initMainView() {
+        setContentView(R.layout.fingerpaint);
+        paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
+        pgbWaiting = (ProgressBar) findViewById(R.id.pgbWaiting);
+        nextButton = (Button) findViewById(R.id.nextButton);
+        nextButton.setOnClickListener(new OnClickListener()
+        {
+        	public void onClick(View v) {
+        		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
+        		if (clientState.equals("main")) {
+        			Log.e(getLocalClassName(),"Button should not be clicked in main state");
+        			return;
+        		}
+        		if (app.equals("grouping") && clientState.equals("painting")){
+        			Bitmap bitmap = paintView.getBitmap();
+        			srv.sendPaint(bitmap);
+        		} else if (app.equals("grouping") && clientState.equals("voting")) {
+        			int id = voteView.getVote();
+        			srv.sendVote(id);
+        		} else if (app.equals("grouping") && clientState.equals("result")) {
+        		}	
+        		toMain();
+        	}	
+        });	
+	}
+	//private PeaceBeServer.FakePeaceBeServer srv = new PeaceBeServer().getFake();
+	private PeaceBeServer srv = new PeaceBeServer();   
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
+		editor = settings.edit();
+		initMainView();
+		// Do the post init by main timer.
+		toInit();
+    }
+	private SharedPreferences settings;
+	private SharedPreferences.Editor editor;
+    public int getPlayer(){
+		int player = settings.getInt("player", 1);
+    	return player;
+    }
+    public void setPlayer(int player){
+        editor.putInt("player", player);
+        editor.commit();
+    }
+    private Runnable mainTimer = new Runnable() {
+    	public void run() {
+    		if (clientState.equals("init")) {
+				if (! initTaskViews()){
+					toInit();
+					return;
+				}
+				int player = getPlayer();
+				srv.setPlayer(player);
+			    toMain(); 
+			    return;
+    		}
+    		if (! clientState.equals("main")) {
+        		Log.e(getLocalClassName(),"mainTimer should not be triger in task state.");
+        		return;
+    		}
+			JSONObject result = srv.getState();
+			if (result == null) {
+				Log.e(getLocalClassName(),"Failed to get state from server.");
+				return;
+			}
+			try {
+				app = result.getString("app");
+				state = result.getString("state");
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    		if (app.equals("grouping") && state.equals("painting")){
+    			toPainting();
+    		} else if (app.equals("grouping") && state.equals("voting")) {
+    			toVoting();
+    		} else if (app.equals("grouping") && state.equals("result")) {
+    			toResult();
+    		} else { /* Still in main state */
+    			handler.postDelayed(mainTimer, 200);
+    		}
+    	}
+    }; 
+    public void toInit(){
+        clientState="init";
+        handler.postDelayed(mainTimer, 1);
+    }
+	public void toMain() {
+		paintFrame.removeAllViews();
+		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
+		nextButton.setVisibility(Button.INVISIBLE);
+		handler.postDelayed(mainTimer, 1);
+		clientState="main";
+	}
+    public void toPainting(){
+		new AlertDialog.Builder(paintFrame.getContext())
+        .setTitle("Task")
+        .setMessage("Draw your favorite animal.")
+        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) { 
+            }
+         })
+     	.show();
+		paintFrame.addView(paintView);
+		nextButton.setVisibility(Button.VISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+        handler.removeCallbacks(mainTimer);
+		clientState="painting";
+    }
+    public void toVoting(){
+		JSONArray q = srv.getCandidate();
+		voteView.setCandidate(q);
+		paintFrame.addView(voteView);
+		nextButton.setVisibility(Button.VISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+        handler.removeCallbacks(mainTimer);
+		clientState="voting";
+    }
+    public void toResult(){
+		JSONObject m = srv.getGroupingResult();
+		groupingResultView.setResult(m);
+		paintFrame.addView(groupingResultView);
+		nextButton.setVisibility(Button.VISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+        handler.removeCallbacks(mainTimer);
+		clientState="result";
+    }
+    public boolean resetPlayer() {
         final CharSequence[] items = {"Player1", "Player2", "Player3","Player4","Player5","Player6","Player7","Player8"};
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Pick a player");
@@ -65,112 +198,13 @@ public class PlayerActivity extends Activity {
             public void onClick(DialogInterface dialogInterface, int item) {
                 Toast.makeText(getApplicationContext(), items[item], Toast.LENGTH_SHORT).show();
                 int player = item+1;
-                editor.putInt("player", player);
-                editor.commit();
-                srv.setPlayer(player);
+                setPlayer(player);
+                // Do the post init by mainTimer
+                toInit();
                 return;
             }
         });
-        builder.create().show();		
-	}
-	public void initClient(){
-		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
-		editor = settings.edit();
-		int player = settings.getInt("player", 0);
-		if (player == 0) {
-			initPlayer();
-		}
-		else {
-			srv.setPlayer(player);
-		}
-        clientState="main";
-	}
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.fingerpaint);
-        paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
-        nextButton = (Button) findViewById(R.id.nextButton);
-        nextButton.setOnClickListener(new OnClickListener()
-        {
-        	public void onClick(View v) {
-        		if (paintView == null) {
-        			paintFrame.removeAllViews();
-        	        initClient();
-        	        initView();
-        		}
-        		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
-        		if (clientState=="main") {
-        			JSONObject result = srv.getState();
-        			if (result == null) {
-        				return;
-        			}
-        			try {
-						app = result.getString("app");
-						state = result.getString("state");
-						Log.i(getLocalClassName(), "1 app [" + app + "] state [" + state + "]");
-					} catch (JSONException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	        		if (app.equals("grouping") && state.equals("painting")){
-	          			new AlertDialog.Builder(paintFrame.getContext())
-	        	        .setTitle("Task")
-	        	        .setMessage("Draw your favorite animal.")
-	        	        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-	        	            public void onClick(DialogInterface dialog, int which) { 
-	        	            }
-	        	         })
-	        	     	.show();
-	        			paintFrame.addView(paintView);
-	        			clientState="painting";
-	        			Log.i(getLocalClassName(), "main painting");
-	        		} else if (app.equals("grouping") && state.equals("voting")) {
-	        			JSONArray q = srv.getCandidate();
-	        			voteView.setCandidate(q);
-	        			paintFrame.addView(voteView);
-	        			clientState="voting";
-	        			Log.i(getLocalClassName(), "main voting");
-	        		} else if (app.equals("grouping") && state.equals("result")) {
-	        			JSONObject m = srv.getGroupingResult();
-	        			groupingResultView.setResult(m);
-	        			paintFrame.addView(groupingResultView);
-	        			clientState="result";
-	        			Log.i(getLocalClassName(), "main result");
-	        		}
-        		} else {
-	        		if (app.equals("grouping") && clientState.equals("painting")){
-	        			//paintFrame.removeView(paintView);
-	        			paintFrame.removeAllViews();
-	        			Bitmap bitmap = paintView.getBitmap();
-	        			srv.sendPaint(bitmap);
-	        			clientState="main";
-	        			Log.i(getLocalClassName(), "grouping painting");
-	        		} else if (app.equals("grouping") && clientState.equals("voting")) {
-	        			//paintFrame.removeView(voteView);
-	        			paintFrame.removeAllViews();
-	        			int id =voteView.getVote();
-	        			srv.sendVote(id);
-	        			clientState="main";
-	        			Log.i(getLocalClassName(), "grouping voting");
-	        			Log.i(getLocalClassName(), "voted " + id);
-	        		} else if (app.equals("grouping") && clientState.equals("result")) {
-	        			//paintFrame.removeView(groupingResultView);
-	        			paintFrame.removeAllViews();
-	        			clientState="main";
-	        			Log.i(getLocalClassName(), "grouping stop");
-	        		}	
-        		}
-        		Log.i(getLocalClassName(), "1 app " + app + " clientState " + clientState);
-                
-			}
-        });
-     }
-    public boolean doLeave() {
-    	paintFrame.removeAllViews();
-    	initClient();
-    	initView();
-    	initPlayer();
+        builder.show();		
 		return false;
     }
     
@@ -197,7 +231,7 @@ public class PlayerActivity extends Activity {
     	if (view != null) {
     		view.onPrepareOptionsMenu(menu);
     	}
-    	menu.add(0, LEAVE_MENU_ID, 0, "Leave").setShortcut('6', 'l');
+    	menu.add(0, LEAVE_MENU_ID, 0, "Player").setShortcut('6', 'l');
         return super.onPrepareOptionsMenu(menu);
     }
     
@@ -209,7 +243,7 @@ public class PlayerActivity extends Activity {
     	}
         switch (item.getItemId()) {
         	case LEAVE_MENU_ID:
-        		doLeave();
+        		resetPlayer();
         		return true;
         }
         return super.onOptionsItemSelected(item);
