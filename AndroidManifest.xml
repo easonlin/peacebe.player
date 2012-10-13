@@ -12,7 +12,7 @@
         android:icon="@drawable/peacebe_user"
         android:label="@string/appName" >
         <activity
-            android:name="peacebe.PlayerActivity"
+            android:name=".PlayerActivity"
             android:label="@string/appName" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -20,5 +20,5 @@
             </intent-filter>
         </activity>
     </application>
-
+ 	<uses-feature android:name="android.hardware.camera" />
 </manifest>

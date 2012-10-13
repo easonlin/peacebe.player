@@ -1,4 +1,4 @@
-package peacebe;
+package peacebe.user;
 
 import android.content.Context;
 import android.view.Menu;

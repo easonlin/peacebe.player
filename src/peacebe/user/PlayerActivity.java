@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package peacebe;
+package peacebe.user;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -37,7 +37,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import peacebe.PeaceBeServer;
+import peacebe.common.PeaceBeServer;
 
 public class PlayerActivity extends Activity {    
 	private FrameLayout paintFrame;

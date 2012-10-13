@@ -1,7 +1,10 @@
-package peacebe;
+package peacebe.user;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+
+import peacebe.common.PeaceBeServer;
+
 
 import android.content.Context;
 import android.graphics.Bitmap;
