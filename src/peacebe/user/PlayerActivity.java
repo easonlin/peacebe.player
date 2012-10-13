@@ -87,7 +87,7 @@ public class PlayerActivity extends Activity {
         });	
 	}
 	//private PeaceBeServer.FakePeaceBeServer srv = new PeaceBeServer().getFake();
-	private PeaceBeServer srv = new PeaceBeServer();   
+	private PeaceBeServer srv = PeaceBeServer.factoryGet();   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

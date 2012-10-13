@@ -3,6 +3,7 @@ package peacebe.user;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import peacebe.common.Helper;
 import peacebe.common.PeaceBeServer;
 
 
@@ -26,14 +27,14 @@ public class GroupingResultView extends ActivityView {
         canvas.drawColor(0xFFFFFFAA);
         Bitmap bitmap=null;
 		try {
-			bitmap = PeaceBeServer.getBitmapFromString(mResult.getString("photo"));
+			bitmap = Helper.getBitmapFromString(mResult.getString("photo"));
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         int w = getWidth();
         int h = getHeight();
-		Bitmap resizedBitmap = PeaceBeServer.getResizedBitmap(bitmap, w, h);
+		Bitmap resizedBitmap = Helper.getResizedBitmap(bitmap, w, h);
         canvas.drawBitmap(resizedBitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
     }
 

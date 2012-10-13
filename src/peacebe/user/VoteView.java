@@ -3,6 +3,7 @@ package peacebe.user;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import peacebe.common.Helper;
 import peacebe.common.PeaceBeServer;
 
 
@@ -46,12 +47,12 @@ public class VoteView extends ActivityView {
 		canvas.scale(1, 1, w, h);
 		Bitmap bitmap = null;
 		try {
-			bitmap = PeaceBeServer.getBitmapFromString(mCandidate.getJSONObject(location).getString("paint"));
+			bitmap = Helper.getBitmapFromString(mCandidate.getJSONObject(location).getString("paint"));
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Bitmap resizedBitmap = PeaceBeServer.getResizedBitmap(bitmap, w, h);
+		Bitmap resizedBitmap = Helper.getResizedBitmap(bitmap, w, h);
 		if(location == mVote){
 			canvas.drawColor(0xFFFFFFAA);
 		}
