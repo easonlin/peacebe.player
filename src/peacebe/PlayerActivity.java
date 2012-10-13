@@ -153,7 +153,7 @@ public class PlayerActivity extends Activity {
 	public void toMain() {
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
-		nextButton.setVisibility(Button.INVISIBLE);
+		nextButton.setVisibility(Button.GONE);
 		handler.postDelayed(mainTimer, 1);
 		clientState="main";
 	}
@@ -168,7 +168,7 @@ public class PlayerActivity extends Activity {
      	.show();
 		paintFrame.addView(paintView);
 		nextButton.setVisibility(Button.VISIBLE);
-		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.GONE);
         handler.removeCallbacks(mainTimer);
 		clientState="painting";
     }
@@ -177,7 +177,7 @@ public class PlayerActivity extends Activity {
 		voteView.setCandidate(q);
 		paintFrame.addView(voteView);
 		nextButton.setVisibility(Button.VISIBLE);
-		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.GONE);
         handler.removeCallbacks(mainTimer);
 		clientState="voting";
     }
@@ -186,7 +186,7 @@ public class PlayerActivity extends Activity {
 		groupingResultView.setResult(m);
 		paintFrame.addView(groupingResultView);
 		nextButton.setVisibility(Button.VISIBLE);
-		pgbWaiting.setVisibility(ProgressBar.INVISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.GONE);
         handler.removeCallbacks(mainTimer);
 		clientState="result";
     }

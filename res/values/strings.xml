@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- general -->
+    <string name="appName">PeaceBe User</string>
+
+    <!-- main -->
+    
+    <!-- painting -->
+   
+   <!-- 手动声明资源ID，类似于C++中的前置声明 --> 
+    <item type="id" name="buttonList"></item>  
+    
+</resources>
