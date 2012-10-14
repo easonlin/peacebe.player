@@ -3,8 +3,8 @@ package peacebe.user;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import peacebe.common.ActivityView;
 import peacebe.common.Helper;
-import peacebe.common.PeaceBeServer;
 
 
 import android.content.Context;

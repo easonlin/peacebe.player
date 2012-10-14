@@ -1,5 +1,6 @@
 package peacebe.user;
 
+import peacebe.common.ActivityView;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
@@ -16,8 +17,6 @@ import android.view.MotionEvent;
 public class PaintView extends ActivityView 
 		implements ColorPickerDialog.OnColorChangedListener{
     
-    private static final float MINP = 0.25f;
-    private static final float MAXP = 0.75f;
     private Bitmap  mBitmap;
     private Canvas  mCanvas;
     private Path    mPath;

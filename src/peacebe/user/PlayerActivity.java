@@ -37,6 +37,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import peacebe.common.ActivityView;
 import peacebe.common.PeaceBeServer;
 
 public class PlayerActivity extends Activity {    
@@ -62,7 +63,7 @@ public class PlayerActivity extends Activity {
         return true;
 	}
 	public void initMainView() {
-        setContentView(R.layout.fingerpaint);
+        setContentView(R.layout.main);
         paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
         pgbWaiting = (ProgressBar) findViewById(R.id.pgbWaiting);
         nextButton = (Button) findViewById(R.id.nextButton);
