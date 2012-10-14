@@ -16,6 +16,10 @@
 
 package peacebe.user;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,6 +28,7 @@ import peacebe.user.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.*;
 import android.os.Bundle;
@@ -35,17 +40,21 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import peacebe.common.ActivityView;
+import peacebe.common.Helper;
 import peacebe.common.PeaceBeServer;
 
 public class PlayerActivity extends Activity {    
+	private PeaceBeServer srv = PeaceBeServer.factoryGet();   
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
 	private VoteView voteView;
-	private GroupingResultView groupingResultView;
+	//private GroupingResultView groupingResultView;
+	private ImageView groupingResultView;
 	private ProgressBar pgbWaiting;
 	private Handler handler = new Handler();
 	private String state;
@@ -59,7 +68,9 @@ public class PlayerActivity extends Activity {
         }
         paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
         voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
-        groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
+        profileingView = new ImageView(paintFrame.getContext());
+        //groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
+        groupingResultView = new ImageView(paintFrame.getContext());
         return true;
 	}
 	public void initMainView() {
@@ -82,13 +93,13 @@ public class PlayerActivity extends Activity {
         			int id = voteView.getVote();
         			srv.sendVote(id);
         		} else if (app.equals("grouping") && clientState.equals("result")) {
-        		}	
+        		} else if (app.equals("profiling") && clientState.equals("profiling")) {
+        			srv.sendProfile(mProfilePhoto);
+        		}
         		toMain();
         	}	
         });	
 	}
-	//private PeaceBeServer.FakePeaceBeServer srv = new PeaceBeServer().getFake();
-	private PeaceBeServer srv = PeaceBeServer.factoryGet();   
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -142,7 +153,10 @@ public class PlayerActivity extends Activity {
     			toVoting();
     		} else if (app.equals("grouping") && state.equals("result")) {
     			toResult();
+    		} else if (app.equals("profiling") && state.equals("profiling")) {
+    			toProfiling();
     		} else { /* Still in main state */
+    		
     			handler.postDelayed(mainTimer, 200);
     		}
     	}
@@ -150,6 +164,14 @@ public class PlayerActivity extends Activity {
     public void toInit(){
         clientState="init";
         handler.postDelayed(mainTimer, 1);
+    }
+    public void toProfiling(){
+    	pickImage();
+		paintFrame.addView(profileingView);
+		nextButton.setVisibility(Button.VISIBLE);
+		pgbWaiting.setVisibility(ProgressBar.GONE);
+        handler.removeCallbacks(mainTimer);
+		clientState="profiling";
     }
 	public void toMain() {
 		paintFrame.removeAllViews();
@@ -182,9 +204,19 @@ public class PlayerActivity extends Activity {
         handler.removeCallbacks(mainTimer);
 		clientState="voting";
     }
+    public void setResult(JSONObject mResult) {
+        Bitmap bitmap=null;
+		try {
+			bitmap = Helper.getBitmapFromString(mResult.getString("photo"));
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		groupingResultView.setImageBitmap(mProfilePhoto);
+    }
     public void toResult(){
 		JSONObject m = srv.getGroupingResult();
-		groupingResultView.setResult(m);
+		setResult(m);
 		paintFrame.addView(groupingResultView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
@@ -248,5 +280,38 @@ public class PlayerActivity extends Activity {
         		return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+    private static final int REQUEST_CODE = 1;
+    private Bitmap mProfilePhoto;
+    private ImageView profileingView;
+    public void pickImage() {
+      Intent intent = new Intent();
+      intent.setType("image/*");
+      intent.setAction(Intent.ACTION_GET_CONTENT);
+      intent.addCategory(Intent.CATEGORY_OPENABLE);
+      startActivityForResult(intent, REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+      if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)
+        try {
+          // We need to recyle unused bitmaps
+          if (mProfilePhoto != null) {
+            mProfilePhoto.recycle();
+          }
+          InputStream stream = getContentResolver().openInputStream(data.getData());
+          mProfilePhoto = BitmapFactory.decodeStream(stream);
+          stream.close();
+          String a = Helper.getStringFromBitmap(mProfilePhoto);
+          Bitmap b = Helper.getBitmapFromString(a);
+          profileingView.setImageBitmap(b);
+          //profileingView.setImageBitmap(mProfilePhoto);
+        } catch (FileNotFoundException e) {
+          e.printStackTrace();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      super.onActivityResult(requestCode, resultCode, data);
     }
 }
