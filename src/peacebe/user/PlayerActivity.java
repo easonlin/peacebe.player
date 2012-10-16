@@ -57,8 +57,7 @@ public class PlayerActivity extends Activity {
 	//private GroupingResultView groupingResultView;
 	private ImageView groupingResultView;
 	private ProgressBar pgbWaiting;
-	private Handler mUiHandler;
-	private Handler mTaskHandler=new Handler();
+	private Handler mHandler;
 	private HandlerThread mTaskThread;
 	private String state;
 	private String app;
@@ -72,6 +71,7 @@ public class PlayerActivity extends Activity {
         paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
         voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
         profileingView = new ImageView(paintFrame.getContext());
+        profileingView.setVisibility(ImageView.GONE);
         //groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
         groupingResultView = new ImageView(paintFrame.getContext());
         return true;
@@ -101,9 +101,6 @@ public class PlayerActivity extends Activity {
         		}
         		toMain();
         	}	
-        	public void onUiThread(){
-        		
-        	}
         });	
 	}
     @Override
@@ -113,7 +110,7 @@ public class PlayerActivity extends Activity {
 		editor = settings.edit();
 		mTaskThread = new HandlerThread("task");
 		mTaskThread.start();
-		mTaskHandler = new Handler(mTaskThread.getLooper());
+		mHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
 		toInit();
@@ -128,12 +125,7 @@ public class PlayerActivity extends Activity {
         editor.putInt("player", player);
         editor.commit();
     }
-    private Runnable uiUpdate = new Runnable(){
-    	public void run(){
-    		
-    	}
-    };
-    private Runnable task = new Runnable() {
+    private Runnable mainTimer = new Runnable() {
     	public void run() {
     		if (clientState.equals("init")) {
 				if (! initTaskViews()){
