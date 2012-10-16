@@ -81,7 +81,6 @@ public class PlayerActivity extends Activity {
         paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
         voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
         profileingView = new ImageView(paintFrame.getContext());
-        profileingView.setVisibility(ImageView.GONE);
         groupingResultView = new ImageView(paintFrame.getContext());
 	}
 	public void initMainView() {
@@ -93,22 +92,8 @@ public class PlayerActivity extends Activity {
         {
         	public void onClick(View v) {
         		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
-        		if (clientState.equals("main")) {
-        			Log.e(getLocalClassName(),"Button should not be clicked in main state");
-        			return;
-        		}
-        		if (app.equals("grouping") && clientState.equals("painting")){
-        			Bitmap bitmap = paintView.getBitmap();
-        			srv.sendPaint(bitmap);
-        		} else if (app.equals("grouping") && clientState.equals("voting")) {
-        			int id = voteView.getVote();
-        			srv.sendVote(id);
-        		} else if (app.equals("grouping") && clientState.equals("result")) {
-        		} else if (app.equals("profiling") && clientState.equals("profiling")) {
-        			srv.sendProfile(mProfilePhoto);
-        		}
-        		clientState="main";
-        		toMain();
+        		uiMain();
+        		mHandler.post(onClick);
         	}	
         });	
 	}
@@ -141,10 +126,10 @@ public class PlayerActivity extends Activity {
     			initTaskViews();
     			uiMain();
     			isInited=true;
-    			return;
+    			Log.i("run","uiTImer inited");
     		}
     		if(clientState.equals("main")){
-    			uiMain();
+    			Log.e(getLocalClassName(),"Button should not be clicked in main state");
     			return;
     		}
     		if (app.equals("grouping") && state.equals("painting")){
@@ -158,15 +143,35 @@ public class PlayerActivity extends Activity {
     		} 
     	}
     };
+    private Runnable onClick = new Runnable(){
+    	public void run(){
+    		Log.i("run","onClick");
+    		if (clientState.equals("main")) {
+    			Log.e(getLocalClassName(),"Button should not be clicked in main state");
+    			return;
+    		}
+    		if (app.equals("grouping") && clientState.equals("painting")){
+    			Bitmap bitmap = paintView.getBitmap();
+    			srv.sendPaint(bitmap);
+    		} else if (app.equals("grouping") && clientState.equals("voting")) {
+    			int id = voteView.getVote();
+    			srv.sendVote(id);
+    		} else if (app.equals("grouping") && clientState.equals("result")) {
+    		} else if (app.equals("profiling") && clientState.equals("profiling")) {
+    			srv.sendProfile(mProfilePhoto);
+    		}    		
+    		clientState="main";
+        	mHandler.postDelayed(mainTimer, 1);
+    	}
+    };
     private Runnable mainTimer = new Runnable() {
     	public void run() {
-    		Log.i("run","mainTimer");
+    		Log.i("run","mainTimer isInited:"+ isInited);
     		if (! isInited) {
 				if (! isPaintFrameReady()){
 					mHandler.postDelayed(mainTimer, 100);
 					return;
 				}
-				mUiHandler.post(uiTimer);
 				int player = getPlayer();
 				srv.setPlayer(player);
     		}
@@ -217,10 +222,6 @@ public class PlayerActivity extends Activity {
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
     }
-	public void toMain() {
-		mHandler.postDelayed(mainTimer, 1);
-        mUiHandler.post(uiTimer);
-	}
 	public void uiMain(){
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
