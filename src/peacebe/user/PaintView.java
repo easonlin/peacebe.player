@@ -118,7 +118,6 @@ public class PaintView extends ActivityView
     private static final int BLUR_MENU_ID = Menu.FIRST + 2;
     private static final int ERASE_MENU_ID = Menu.FIRST + 3;
     private static final int SRCATOP_MENU_ID = Menu.FIRST + 4;
-	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// TODO Auto-generated method stub
         mPaint.setXfermode(null);
@@ -154,7 +153,6 @@ public class PaintView extends ActivityView
         }
 		return false;
 	}
-	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
 		// TODO Auto-generated method stub
         menu.add(0, COLOR_MENU_ID, 0, "Color").setShortcut('3', 'c');

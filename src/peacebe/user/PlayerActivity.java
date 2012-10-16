@@ -27,6 +27,7 @@ import org.json.JSONObject;
 import peacebe.user.R;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -47,6 +48,7 @@ import android.widget.Toast;
 import peacebe.common.ActivityView;
 import peacebe.common.Helper;
 import peacebe.common.PeaceBeServer;
+import peacebe.common.ViewOption;
 
 public class PlayerActivity extends Activity {    
 	private PeaceBeServer srv = PeaceBeServer.factoryGet();   
@@ -54,27 +56,33 @@ public class PlayerActivity extends Activity {
 	private Button nextButton;
 	private PaintView paintView;
 	private VoteView voteView;
-	//private GroupingResultView groupingResultView;
 	private ImageView groupingResultView;
 	private ProgressBar pgbWaiting;
 	private Handler mHandler;
+	private Handler mUiHandler = new Handler();
 	private HandlerThread mTaskThread;
 	private String state;
 	private String app;
-	private String clientState="init";
-	public boolean initTaskViews() {
+	private String clientState="main";
+	private boolean isInited=false;
+    private JSONArray mCandidate;
+    public boolean isPaintFrameReady(){
         int vHeight = paintFrame.getHeight();
         int vWidth = paintFrame.getWidth();
         if(vHeight <= 0 || vWidth <= 0) {
         	return false; 
+        }  else {
+        	return true;
         }
+    }
+	public void initTaskViews() {
+        int vHeight = paintFrame.getHeight();
+        int vWidth = paintFrame.getWidth();
         paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
         voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
         profileingView = new ImageView(paintFrame.getContext());
         profileingView.setVisibility(ImageView.GONE);
-        //groupingResultView = new GroupingResultView(paintFrame.getContext(), vHeight, vWidth);
         groupingResultView = new ImageView(paintFrame.getContext());
-        return true;
 	}
 	public void initMainView() {
         setContentView(R.layout.main);
@@ -99,6 +107,7 @@ public class PlayerActivity extends Activity {
         		} else if (app.equals("profiling") && clientState.equals("profiling")) {
         			srv.sendProfile(mProfilePhoto);
         		}
+        		clientState="main";
         		toMain();
         	}	
         });	
@@ -113,7 +122,7 @@ public class PlayerActivity extends Activity {
 		mHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
-		toInit();
+    	mHandler.postDelayed(mainTimer, 200);
     }
 	private SharedPreferences settings;
 	private SharedPreferences.Editor editor;
@@ -125,17 +134,41 @@ public class PlayerActivity extends Activity {
         editor.putInt("player", player);
         editor.commit();
     }
+    private Runnable uiTimer = new Runnable(){
+    	public void run(){
+    		Log.i("run","uiTimer");
+    		if (! isInited){
+    			initTaskViews();
+    			uiMain();
+    			isInited=true;
+    			return;
+    		}
+    		if(clientState.equals("main")){
+    			uiMain();
+    			return;
+    		}
+    		if (app.equals("grouping") && state.equals("painting")){
+    			uiPainting();
+    		} else if (app.equals("grouping") && state.equals("voting")) {
+    			uiVoting();
+    		} else if (app.equals("grouping") && state.equals("result")) {
+    			uiResult();
+    		} else if (app.equals("profiling") && state.equals("profiling")) {
+    			uiProfiling();
+    		} 
+    	}
+    };
     private Runnable mainTimer = new Runnable() {
     	public void run() {
-    		if (clientState.equals("init")) {
-				if (! initTaskViews()){
-					toInit();
+    		Log.i("run","mainTimer");
+    		if (! isInited) {
+				if (! isPaintFrameReady()){
+					mHandler.postDelayed(mainTimer, 100);
 					return;
 				}
+				mUiHandler.post(uiTimer);
 				int player = getPlayer();
 				srv.setPlayer(player);
-			    toMain(); 
-			    return;
     		}
     		if (! clientState.equals("main")) {
         		Log.e(getLocalClassName(),"mainTimer should not be triger in task state.");
@@ -155,39 +188,45 @@ public class PlayerActivity extends Activity {
 			}
 			Log.i("STATE", "app:" + app + ",state:" + state);
     		if (app.equals("grouping") && state.equals("painting")){
+    			clientState="painting";
     			toPainting();
     		} else if (app.equals("grouping") && state.equals("voting")) {
+    			mCandidate = srv.getCandidate();
+    			clientState="voting";
     			toVoting();
     		} else if (app.equals("grouping") && state.equals("result")) {
+				JSONObject m = srv.getGroupingResult();
+				setResultBitmap(m);
+				clientState="result";
     			toResult();
     		} else if (app.equals("profiling") && state.equals("profiling")) {
+    			clientState="profiling";
     			toProfiling();
     		} else { /* Still in main state */
-    		
     			mHandler.postDelayed(mainTimer, 200);
     		}
     	}
     }; 
-    public void toInit(){
-        clientState="init";
-        mHandler.postDelayed(mainTimer, 1);
-    }
     public void toProfiling(){
+        mHandler.removeCallbacks(mainTimer);
+        mUiHandler.post(uiTimer);
+    }
+    public void uiProfiling(){
     	pickImage();
 		paintFrame.addView(profileingView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        mHandler.removeCallbacks(mainTimer);
-		clientState="profiling";
     }
 	public void toMain() {
+		mHandler.postDelayed(mainTimer, 1);
+        mUiHandler.post(uiTimer);
+	}
+	public void uiMain(){
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
 		nextButton.setVisibility(Button.GONE);
-		mHandler.postDelayed(mainTimer, 1);
-		clientState="main";
 	}
-    public void toPainting(){
+    public void uiPainting(){
 		new AlertDialog.Builder(paintFrame.getContext())
         .setTitle("Task")
         .setMessage("Draw your favorite animal.")
@@ -199,36 +238,39 @@ public class PlayerActivity extends Activity {
 		paintFrame.addView(paintView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        mHandler.removeCallbacks(mainTimer);
-		clientState="painting";
     }
-    public void toVoting(){
-		JSONArray q = srv.getCandidate();
-		voteView.setCandidate(q);
+    public void toPainting(){
+        mHandler.removeCallbacks(mainTimer);
+        mUiHandler.post(uiTimer);
+    }
+    public void uiVoting(){
+		voteView.setCandidate(mCandidate);
 		paintFrame.addView(voteView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        mHandler.removeCallbacks(mainTimer);
-		clientState="voting";
     }
-    public void setResult(JSONObject mResult) {
-        Bitmap bitmap=null;
+    public void toVoting(){
+        mHandler.removeCallbacks(mainTimer);
+        mUiHandler.post(uiTimer);
+    }
+    Bitmap mBitmap=null;
+    public void setResultBitmap(JSONObject mResult) {
 		try {
-			bitmap = Helper.getBitmapFromString(mResult.getString("photo"));
+			mBitmap = Helper.getBitmapFromString(mResult.getString("photo"));
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		groupingResultView.setImageBitmap(bitmap);
     }
     public void toResult(){
-		JSONObject m = srv.getGroupingResult();
-		setResult(m);
+        mHandler.removeCallbacks(mainTimer);
+        mUiHandler.post(uiTimer);
+    }
+    public void uiResult(){
 		paintFrame.addView(groupingResultView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        mHandler.removeCallbacks(mainTimer);
-		clientState="result";
+		groupingResultView.setImageBitmap(mBitmap);
     }
     public boolean resetPlayer() {
         final CharSequence[] items = {"Player1", "Player2", "Player3","Player4","Player5","Player6","Player7","Player8"};
@@ -262,12 +304,29 @@ public class PlayerActivity extends Activity {
         *****/
         return true;
     }
-    
+    public class MyImageView extends ImageView implements ViewOption {
+
+		public MyImageView(Context context) {
+			super(context);
+			// TODO Auto-generated constructor stub
+		}
+
+		public boolean onOptionsItemSelected(MenuItem item) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		public void onPrepareOptionsMenu(Menu menu) {
+			// TODO Auto-generated method stub
+			
+		}
+    	
+    };
     private static final int LEAVE_MENU_ID = Menu.FIRST+6;
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
     	menu.clear();
-    	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
+    	ViewOption view = (ViewOption) paintFrame.getChildAt(0);
     	if (view != null) {
     		view.onPrepareOptionsMenu(menu);
     	}
@@ -298,7 +357,9 @@ public class PlayerActivity extends Activity {
       intent.addCategory(Intent.CATEGORY_OPENABLE);
       startActivityForResult(intent, REQUEST_CODE);
     }
-
+    public void toInit(){
+    	isInited = false;
+    }
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
       if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)

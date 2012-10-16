@@ -97,13 +97,11 @@ public class VoteView extends ActivityView {
         drawPict(canvas, x, y, x, y, 3);
     }
 
-	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
-	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
 		// TODO Auto-generated method stub
 		

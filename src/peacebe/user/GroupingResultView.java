@@ -38,13 +38,11 @@ public class GroupingResultView extends ActivityView {
         canvas.drawBitmap(resizedBitmap, 0, 0, new Paint(Paint.DITHER_FLAG));
     }
 
-	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
-	@Override
 	public void onPrepareOptionsMenu(Menu menu) {
 		// TODO Auto-generated method stub
 		
