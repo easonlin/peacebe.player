@@ -33,6 +33,7 @@ import android.content.SharedPreferences;
 import android.graphics.*;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -56,7 +57,9 @@ public class PlayerActivity extends Activity {
 	//private GroupingResultView groupingResultView;
 	private ImageView groupingResultView;
 	private ProgressBar pgbWaiting;
-	private Handler handler = new Handler();
+	private Handler mUiHandler;
+	private Handler mTaskHandler=new Handler();
+	private HandlerThread mTaskThread;
 	private String state;
 	private String app;
 	private String clientState="init";
@@ -98,6 +101,9 @@ public class PlayerActivity extends Activity {
         		}
         		toMain();
         	}	
+        	public void onUiThread(){
+        		
+        	}
         });	
 	}
     @Override
@@ -105,6 +111,9 @@ public class PlayerActivity extends Activity {
         super.onCreate(savedInstanceState);
 		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
 		editor = settings.edit();
+		mTaskThread = new HandlerThread("task");
+		mTaskThread.start();
+		mTaskHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
 		toInit();
@@ -119,7 +128,12 @@ public class PlayerActivity extends Activity {
         editor.putInt("player", player);
         editor.commit();
     }
-    private Runnable mainTimer = new Runnable() {
+    private Runnable uiUpdate = new Runnable(){
+    	public void run(){
+    		
+    	}
+    };
+    private Runnable task = new Runnable() {
     	public void run() {
     		if (clientState.equals("init")) {
 				if (! initTaskViews()){
@@ -147,6 +161,7 @@ public class PlayerActivity extends Activity {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			Log.i("STATE", "app:" + app + ",state:" + state);
     		if (app.equals("grouping") && state.equals("painting")){
     			toPainting();
     		} else if (app.equals("grouping") && state.equals("voting")) {
@@ -157,27 +172,27 @@ public class PlayerActivity extends Activity {
     			toProfiling();
     		} else { /* Still in main state */
     		
-    			handler.postDelayed(mainTimer, 200);
+    			mHandler.postDelayed(mainTimer, 200);
     		}
     	}
     }; 
     public void toInit(){
         clientState="init";
-        handler.postDelayed(mainTimer, 1);
+        mHandler.postDelayed(mainTimer, 1);
     }
     public void toProfiling(){
     	pickImage();
 		paintFrame.addView(profileingView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        handler.removeCallbacks(mainTimer);
+        mHandler.removeCallbacks(mainTimer);
 		clientState="profiling";
     }
 	public void toMain() {
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
 		nextButton.setVisibility(Button.GONE);
-		handler.postDelayed(mainTimer, 1);
+		mHandler.postDelayed(mainTimer, 1);
 		clientState="main";
 	}
     public void toPainting(){
@@ -192,7 +207,7 @@ public class PlayerActivity extends Activity {
 		paintFrame.addView(paintView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        handler.removeCallbacks(mainTimer);
+        mHandler.removeCallbacks(mainTimer);
 		clientState="painting";
     }
     public void toVoting(){
@@ -201,7 +216,7 @@ public class PlayerActivity extends Activity {
 		paintFrame.addView(voteView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        handler.removeCallbacks(mainTimer);
+        mHandler.removeCallbacks(mainTimer);
 		clientState="voting";
     }
     public void setResult(JSONObject mResult) {
@@ -212,7 +227,7 @@ public class PlayerActivity extends Activity {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		groupingResultView.setImageBitmap(mProfilePhoto);
+		groupingResultView.setImageBitmap(bitmap);
     }
     public void toResult(){
 		JSONObject m = srv.getGroupingResult();
@@ -220,7 +235,7 @@ public class PlayerActivity extends Activity {
 		paintFrame.addView(groupingResultView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-        handler.removeCallbacks(mainTimer);
+        mHandler.removeCallbacks(mainTimer);
 		clientState="result";
     }
     public boolean resetPlayer() {
@@ -301,7 +316,11 @@ public class PlayerActivity extends Activity {
             mProfilePhoto.recycle();
           }
           InputStream stream = getContentResolver().openInputStream(data.getData());
-          mProfilePhoto = BitmapFactory.decodeStream(stream);
+          BitmapFactory.Options options = new BitmapFactory.Options();
+          options.inPurgeable = true;
+          options.inInputShareable = true;
+          options.inSampleSize = 8000;
+          mProfilePhoto = BitmapFactory.decodeStream(stream,null,options);
           stream.close();
           String a = Helper.getStringFromBitmap(mProfilePhoto);
           Bitmap b = Helper.getBitmapFromString(a);
