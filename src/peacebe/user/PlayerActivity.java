@@ -50,13 +50,13 @@ import peacebe.common.Helper;
 import peacebe.common.PeaceBeServer;
 import peacebe.common.ViewOption;
 
-public class PlayerActivity extends Activity {    
-	private PeaceBeServer srv = PeaceBeServer.factoryGet();   
+public class PlayerActivity extends Activity {
+	private PeaceBeServer srv = PeaceBeServer.factoryGet();
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
 	private VoteView voteView;
-	private ImageView groupingResultView;
+	private MyImageView groupingResultView;
 	private AlertDialog mTaskDialog;
 	private ProgressBar pgbWaiting;
 	private Handler mHandler;
@@ -64,50 +64,56 @@ public class PlayerActivity extends Activity {
 	private HandlerThread mTaskThread;
 	private String state;
 	private String app;
-	private String clientState="main";
-	private boolean isInited=false;
-    private JSONArray mCandidate;
-    public boolean isPaintFrameReady(){
-        int vHeight = paintFrame.getHeight();
-        int vWidth = paintFrame.getWidth();
-        if(vHeight <= 0 || vWidth <= 0) {
-        	return false; 
-        }  else {
-        	return true;
-        }
-    }
+	private String clientState = "main";
+	private boolean isInited = false;
+	private JSONArray mCandidate;
+
+	public boolean isPaintFrameReady() {
+		int vHeight = paintFrame.getHeight();
+		int vWidth = paintFrame.getWidth();
+		if (vHeight <= 0 || vWidth <= 0) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
 	public void initTaskViews() {
-        int vHeight = paintFrame.getHeight();
-        int vWidth = paintFrame.getWidth();
-        paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
-        voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
-        profileingView = new ImageView(paintFrame.getContext());
-        groupingResultView = new ImageView(paintFrame.getContext());
+		int vHeight = paintFrame.getHeight();
+		int vWidth = paintFrame.getWidth();
+		paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
+		voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
+		profileingView = new MyImageView(paintFrame.getContext());
+		groupingResultView = new MyImageView(paintFrame.getContext());
 		mTaskDialog = new AlertDialog.Builder(paintFrame.getContext())
-		.setTitle("Task")
-        .setMessage("Draw your favorite animal.")
-        .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int which) { 
-            }
-         }).create();
+				.setTitle("Task")
+				.setMessage("Draw your favorite animal.")
+				.setPositiveButton("Yes",
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int which) {
+							}
+						}).create();
 	}
+
 	public void initMainView() {
-        setContentView(R.layout.main);
-        paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
-        pgbWaiting = (ProgressBar) findViewById(R.id.pgbWaiting);
-        nextButton = (Button) findViewById(R.id.nextButton);
-        nextButton.setOnClickListener(new OnClickListener()
-        {
-        	public void onClick(View v) {
-        		Log.i(getLocalClassName(), "1 app[ " + app + "] clientState [" + clientState + "]");
-        		uiMain();
-        		mHandler.post(onClick);
-        	}	
-        });	
+		setContentView(R.layout.main);
+		paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
+		pgbWaiting = (ProgressBar) findViewById(R.id.pgbWaiting);
+		nextButton = (Button) findViewById(R.id.nextButton);
+		nextButton.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				Log.i(getLocalClassName(), "1 app[ " + app + "] clientState ["
+						+ clientState + "]");
+				uiMain();
+				mHandler.post(onClick);
+			}
+		});
 	}
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
 		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
 		editor = settings.edit();
 		mTaskThread = new HandlerThread("task");
@@ -115,80 +121,86 @@ public class PlayerActivity extends Activity {
 		mHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
-    	mHandler.postDelayed(mainTimer, 200);
-    }
+		mHandler.postDelayed(mainTimer, 200);
+	}
+
 	private SharedPreferences settings;
 	private SharedPreferences.Editor editor;
-    public int getPlayer(){
+
+	public int getPlayer() {
 		int player = settings.getInt("player", 1);
-    	return player;
-    }
-    public void setPlayer(int player){
-        editor.putInt("player", player);
-        editor.commit();
-    }
-    private Runnable uiTimer = new Runnable(){
-    	public void run(){
-    		Log.i("run","uiTimer");
-    		if (! isInited){
-    			initTaskViews();
-    			uiMain();
-    			isInited=true;
-    			Log.i("run","uiTImer inited");
-    		}
-    		//if(clientState.equals("main")){
-    		//	uiMain();
-    		//}
-    		if (app.equals("grouping") && state.equals("painting")){
-    			uiPainting();
-    		} else if (app.equals("grouping") && state.equals("voting")) {
-    			uiVoting();
-    		} else if (app.equals("grouping") && state.equals("result")) {
-    			uiResult();
-    		} else if (app.equals("profiling") && state.equals("profiling")) {
-    			uiProfiling();
-    		} 
-    	}
-    };
-    private Runnable onClick = new Runnable(){
-    	public void run(){
-    		Log.i("run","onClick");
-    		if (clientState.equals("main")) {
-    			Log.e(getLocalClassName(),"Button should not be clicked in main state");
-    			return;
-    		}
-    		String pstate = clientState;
-    		clientState = "main";
-    		if (app.equals("grouping") && pstate.equals("painting")){
-    			Bitmap bitmap = paintView.getBitmap();
-    			srv.sendPaint(bitmap);
-    		} else if (app.equals("grouping") && pstate.equals("voting")) {
-    			int id = voteView.getVote();
-    			srv.sendVote(id);
-    		} else if (app.equals("grouping") && pstate.equals("result")) {
-    		} else if (app.equals("profiling") && pstate.equals("profiling")) {
-    			srv.sendProfile(mProfilePhoto);
-    		}    		
-    	}
-    };
-    private Runnable mainTimer = new Runnable() {
-    	public void run() {
-    		Log.i("run","mainTimer isInited:"+ isInited);
-    		if (! isInited) {
-				if (! isPaintFrameReady()){
+		return player;
+	}
+
+	public void setPlayer(int player) {
+		editor.putInt("player", player);
+		editor.commit();
+	}
+
+	private Runnable uiTimer = new Runnable() {
+		public void run() {
+			Log.i("run", "uiTimer");
+			if (!isInited) {
+				initTaskViews();
+				uiMain();
+				isInited = true;
+				Log.i("run", "uiTImer inited");
+			}
+			if (app.equals("grouping") && state.equals("painting")) {
+				uiPainting();
+			} else if (app.equals("grouping") && state.equals("voting")) {
+				uiVoting();
+			} else if (app.equals("grouping") && state.equals("result")) {
+				uiResult();
+			} else if (app.equals("profiling") && state.equals("profiling")) {
+				uiProfiling();
+			} else {
+				uiMain();
+			}
+		}
+	};
+	private Runnable onClick = new Runnable() {
+		public void run() {
+			Log.i("run", "onClick");
+			if (state.equals("main")) {
+				Log.e(getLocalClassName(),
+						"Button should not be clicked in main state");
+				return;
+			}
+			if (app.equals("grouping") && state.equals("painting")) {
+				Bitmap bitmap = paintView.getBitmap();
+				srv.sendPaint(bitmap);
+			} else if (app.equals("grouping") && state.equals("voting")) {
+				int id = voteView.getVote();
+				srv.sendVote(id);
+			} else if (app.equals("grouping") && state.equals("result")) {
+			} else if (app.equals("profiling") && state.equals("profiling")) {
+				srv.sendProfile(mProfilePhoto);
+			}
+		}
+	};
+	private Runnable mainTimer = new Runnable() {
+		public void run() {
+			Log.i("run", "mainTimer isInited:" + isInited);
+			if (!isInited) {
+				if (!isPaintFrameReady()) {
 					mHandler.postDelayed(mainTimer, 100);
 					return;
 				}
 				int player = getPlayer();
 				srv.setPlayer(player);
-    		}
+			}
 			JSONObject result = srv.getState();
 			if (result == null) {
-				Log.e(getLocalClassName(),"Failed to get state from server.");
+				Log.e(getLocalClassName(), "Failed to get state from server.");
 				mHandler.postDelayed(mainTimer, 200);
 				return;
 			}
+			String oldapp="";
+			String oldstate="";
 			try {
+				oldapp=app;
+				oldstate=state;
 				app = result.getString("app");
 				state = result.getString("state");
 			} catch (JSONException e) {
@@ -196,111 +208,121 @@ public class PlayerActivity extends Activity {
 				e.printStackTrace();
 			}
 			Log.i("STATE", "app:" + app + ",state:" + state);
-			if (state.equals(clientState)){
+			if (state.equals(oldstate)&&app.equals(oldapp)) {
 				Log.i("STATE", "no state changed");
 				mHandler.postDelayed(mainTimer, 200);
 				return;
-			} 
-			if (app.equals("grouping") && state.equals("painting")){
-    			clientState="painting";
-        		mUiHandler.post(uiTimer);
-    		} else if (app.equals("grouping") && state.equals("voting")) {
-    			mCandidate = srv.getCandidate();
-    			clientState="voting";
-        		mUiHandler.post(uiTimer);
-    		} else if (app.equals("grouping") && state.equals("result")) {
+			}
+			if (app.equals("grouping") && state.equals("painting")) {
+				clientState = "painting";
+				mUiHandler.post(uiTimer);
+			} else if (app.equals("grouping") && state.equals("voting")) {
+				mCandidate = srv.getCandidate();
+				clientState = "voting";
+				mUiHandler.post(uiTimer);
+			} else if (app.equals("grouping") && state.equals("result")) {
 				JSONObject m = srv.getGroupingResult();
 				setResultBitmap(m);
-				clientState="result";
-        		mUiHandler.post(uiTimer);
-    		} else if (app.equals("profiling") && state.equals("profiling")) {
-    			clientState="profiling";
-        		mUiHandler.post(uiTimer);
-    		}
-    		mHandler.postDelayed(mainTimer, 200);
-    	}
-    }; 
+				clientState = "result";
+				mUiHandler.post(uiTimer);
+			} else if (app.equals("profiling") && state.equals("profiling")) {
+				clientState = "profiling";
+				mUiHandler.post(uiTimer);
+			} else if (app.equals("main") && state.equals("stop")){
+				clientState = "main";
+				mUiHandler.post(uiTimer);
+			}
+			mHandler.postDelayed(mainTimer, 200);
+		}
+	};
 
-    public void uiProfiling(){
-    	pickImage();
+	public void uiProfiling() {
+		pickImage();
 		mTaskDialog.dismiss();
 		paintFrame.removeAllViews();
 		paintFrame.addView(profileingView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-    }
-	public void uiMain(){
+	}
+
+	public void uiMain() {
 		mTaskDialog.dismiss();
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
 		nextButton.setVisibility(Button.GONE);
 	}
-    public void uiPainting(){
+
+	public void uiPainting() {
 		mTaskDialog.show();
 		paintFrame.removeAllViews();
 		paintFrame.addView(paintView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-    }
-    public void uiVoting(){
+	}
+
+	public void uiVoting() {
 		mTaskDialog.dismiss();
 		paintFrame.removeAllViews();
 		voteView.setCandidate(mCandidate);
 		paintFrame.addView(voteView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
-    }
+	}
 
-    Bitmap mBitmap=null;
-    public void setResultBitmap(JSONObject mResult) {
+	Bitmap mBitmap = null;
+
+	public void setResultBitmap(JSONObject mResult) {
 		try {
 			mBitmap = Helper.getBitmapFromString(mResult.getString("photo"));
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    }
+	}
 
-    public void uiResult(){
+	public void uiResult() {
 		paintFrame.removeAllViews();
 		paintFrame.addView(groupingResultView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
 		groupingResultView.setImageBitmap(mBitmap);
-    }
-    public boolean resetPlayer() {
-        final CharSequence[] items = {"Player1", "Player2", "Player3","Player4","Player5","Player6","Player7","Player8"};
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Pick a player");
-        builder.setItems(items, new DialogInterface.OnClickListener(){
-            public void onClick(DialogInterface dialogInterface, int item) {
-                Toast.makeText(getApplicationContext(), items[item], Toast.LENGTH_SHORT).show();
-                int player = item+1;
-                setPlayer(player);
-                // Do the post init by mainTimer
-                toInit();
-                return;
-            }
-        });
-        builder.show();		
-		return false;
-    }
-    
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        super.onCreateOptionsMenu(menu);
+	}
 
-        /****   Is this the mechanism to extend with filter effects?
-        Intent intent = new Intent(null, getIntent().getData());
-        intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
-        menu.addIntentOptions(
-                              Menu.ALTERNATIVE, 0,
-                              new ComponentName(this, NotesList.class),
-                              null, intent, 0, null);
-        *****/
-        return true;
-    }
-    public class MyImageView extends ImageView implements ViewOption {
+	public boolean resetPlayer() {
+		final CharSequence[] items = { "Player1", "Player2", "Player3",
+				"Player4", "Player5", "Player6", "Player7", "Player8" };
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setTitle("Pick a player");
+		builder.setItems(items, new DialogInterface.OnClickListener() {
+			public void onClick(DialogInterface dialogInterface, int item) {
+				Toast.makeText(getApplicationContext(), items[item],
+						Toast.LENGTH_SHORT).show();
+				int player = item + 1;
+				setPlayer(player);
+				// Do the post init by mainTimer
+				toInit();
+				return;
+			}
+		});
+		builder.show();
+		return false;
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		super.onCreateOptionsMenu(menu);
+
+		/****
+		 * Is this the mechanism to extend with filter effects? Intent intent =
+		 * new Intent(null, getIntent().getData());
+		 * intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
+		 * menu.addIntentOptions( Menu.ALTERNATIVE, 0, new ComponentName(this,
+		 * NotesList.class), null, intent, 0, null);
+		 *****/
+		return true;
+	}
+
+	public class MyImageView extends ImageView implements ViewOption {
 
 		public MyImageView(Context context) {
 			super(context);
@@ -314,72 +336,83 @@ public class PlayerActivity extends Activity {
 
 		public void onPrepareOptionsMenu(Menu menu) {
 			// TODO Auto-generated method stub
-			
+
 		}
-    	
-    };
-    private static final int LEAVE_MENU_ID = Menu.FIRST+6;
-    @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-    	menu.clear();
-    	ViewOption view = (ViewOption) paintFrame.getChildAt(0);
-    	if (view != null) {
-    		view.onPrepareOptionsMenu(menu);
-    	}
-    	menu.add(0, LEAVE_MENU_ID, 0, "Player").setShortcut('6', 'l');
-        return super.onPrepareOptionsMenu(menu);
-    }
-    
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-    	ActivityView view = (ActivityView) paintFrame.getChildAt(0);
-    	if (view != null){
-    		view.onOptionsItemSelected(item);
-    	}
-        switch (item.getItemId()) {
-        	case LEAVE_MENU_ID:
-        		resetPlayer();
-        		return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-    private static final int REQUEST_CODE = 1;
-    private Bitmap mProfilePhoto;
-    private ImageView profileingView;
-    public void pickImage() {
-      Intent intent = new Intent();
-      intent.setType("image/*");
-      intent.setAction(Intent.ACTION_GET_CONTENT);
-      intent.addCategory(Intent.CATEGORY_OPENABLE);
-      startActivityForResult(intent, REQUEST_CODE);
-    }
-    public void toInit(){
-    	isInited = false;
-    }
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-      if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)
-        try {
-          // We need to recyle unused bitmaps
-          if (mProfilePhoto != null) {
-            mProfilePhoto.recycle();
-          }
-          InputStream stream = getContentResolver().openInputStream(data.getData());
-          BitmapFactory.Options options = new BitmapFactory.Options();
-          options.inPurgeable = true;
-          options.inInputShareable = true;
-          options.inSampleSize = 1;
-          mProfilePhoto = BitmapFactory.decodeStream(stream,null,options);
-          stream.close();
-          String a = Helper.getStringFromBitmap(mProfilePhoto);
-          Bitmap b = Helper.getBitmapFromString(a);
-          profileingView.setImageBitmap(b);
-          //profileingView.setImageBitmap(mProfilePhoto);
-        } catch (FileNotFoundException e) {
-          e.printStackTrace();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      super.onActivityResult(requestCode, resultCode, data);
-    }
+
+	};
+
+	private static final int LEAVE_MENU_ID = Menu.FIRST + 6;
+
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		menu.clear();
+		ViewOption view = (ViewOption) paintFrame.getChildAt(0);
+		if (view != null) {
+			view.onPrepareOptionsMenu(menu);
+		}
+		menu.add(0, LEAVE_MENU_ID, 0, "Player").setShortcut('6', 'l');
+		return super.onPrepareOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		ViewOption view = (ViewOption) paintFrame.getChildAt(0);
+		if (view != null) {
+			view.onOptionsItemSelected(item);
+		}
+		switch (item.getItemId()) {
+		case LEAVE_MENU_ID:
+			resetPlayer();
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
+	private static final int REQUEST_CODE = 1;
+	private Bitmap mProfilePhoto;
+	private ImageView profileingView;
+
+	public void pickImage() {
+		Intent intent = new Intent();
+		intent.setType("image/*");
+		intent.setAction(Intent.ACTION_GET_CONTENT);
+		intent.addCategory(Intent.CATEGORY_OPENABLE);
+		startActivityForResult(intent, REQUEST_CODE);
+	}
+
+	public void toInit() {
+		isInited = false;
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)
+			try {
+				// We need to recyle unused bitmaps
+				if (mProfilePhoto != null) {
+					mProfilePhoto.recycle();
+				}
+				InputStream stream = getContentResolver().openInputStream(
+						data.getData());
+				BitmapFactory.Options options = new BitmapFactory.Options();
+				options.inPurgeable = true;
+				options.inInputShareable = true;
+				options.inSampleSize = 1;
+				mProfilePhoto = BitmapFactory.decodeStream(stream, null,
+						options);
+				stream.close();
+				String a = Helper.getStringFromBitmap(mProfilePhoto);
+				Bitmap b = Helper.getBitmapFromString(a);
+				profileingView.setImageBitmap(b);
+				// profileingView.setImageBitmap(mProfilePhoto);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		else {
+			pickImage();
+		}
+		super.onActivityResult(requestCode, resultCode, data);
+	}
 }
