@@ -64,7 +64,6 @@ public class PlayerActivity extends Activity {
 	private HandlerThread mTaskThread;
 	private String state;
 	private String app;
-	private String clientState = "main";
 	private boolean isInited = false;
 	private JSONArray mCandidate;
 
@@ -103,8 +102,6 @@ public class PlayerActivity extends Activity {
 		nextButton = (Button) findViewById(R.id.nextButton);
 		nextButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				Log.i(getLocalClassName(), "1 app[ " + app + "] clientState ["
-						+ clientState + "]");
 				uiMain();
 				mHandler.post(onClick);
 			}
@@ -214,22 +211,17 @@ public class PlayerActivity extends Activity {
 				return;
 			}
 			if (app.equals("grouping") && state.equals("painting")) {
-				clientState = "painting";
 				mUiHandler.post(uiTimer);
 			} else if (app.equals("grouping") && state.equals("voting")) {
 				mCandidate = srv.getCandidate();
-				clientState = "voting";
 				mUiHandler.post(uiTimer);
 			} else if (app.equals("grouping") && state.equals("result")) {
 				JSONObject m = srv.getGroupingResult();
 				setResultBitmap(m);
-				clientState = "result";
 				mUiHandler.post(uiTimer);
 			} else if (app.equals("profiling") && state.equals("profiling")) {
-				clientState = "profiling";
 				mUiHandler.post(uiTimer);
 			} else if (app.equals("main") && state.equals("stop")){
-				clientState = "main";
 				mUiHandler.post(uiTimer);
 			}
 			mHandler.postDelayed(mainTimer, 200);
@@ -283,8 +275,8 @@ public class PlayerActivity extends Activity {
 	public void uiResult() {
 		paintFrame.removeAllViews();
 		paintFrame.addView(groupingResultView);
-		nextButton.setVisibility(Button.VISIBLE);
-		pgbWaiting.setVisibility(ProgressBar.GONE);
+		nextButton.setVisibility(Button.GONE);
+		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
 		groupingResultView.setImageBitmap(mBitmap);
 	}
 
