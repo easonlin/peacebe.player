@@ -47,11 +47,12 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 import peacebe.common.ActivityView;
 import peacebe.common.Helper;
+import peacebe.common.IPeaceBeServer;
 import peacebe.common.PeaceBeServer;
 import peacebe.common.ViewOption;
 
 public class PlayerActivity extends Activity {
-	private PeaceBeServer srv = PeaceBeServer.factoryGet();
+	private IPeaceBeServer srv = PeaceBeServer.factoryGet();
 	private FrameLayout paintFrame;
 	private Button nextButton;
 	private PaintView paintView;
