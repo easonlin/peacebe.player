@@ -112,6 +112,7 @@ public class PlayerActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		Log.i("FLOW","onCreate");
 		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
 		editor = settings.edit();
 		mTaskThread = new HandlerThread("task");
@@ -119,19 +120,24 @@ public class PlayerActivity extends Activity {
 		mHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
-		mHandler.postDelayed(mainTimer, 200);
+		mHandler.postDelayed(mainTimer, 400);
 	}
 
 	private SharedPreferences settings;
 	private SharedPreferences.Editor editor;
 
-	public int getPlayer() {
-		int player = settings.getInt("player", 1);
+	public String getPlayer() {
+		String player = "1";
+		try {
+			player = settings.getString("player", "1");
+		} catch (ClassCastException e) {
+			e.printStackTrace();
+		}
 		return player;
 	}
 
-	public void setPlayer(int player) {
-		editor.putInt("player", player);
+	public void setPlayer(String player) {
+		editor.putString("player", player);
 		editor.commit();
 	}
 
@@ -169,7 +175,7 @@ public class PlayerActivity extends Activity {
 				Bitmap bitmap = paintView.getBitmap();
 				srv.sendPaint(bitmap);
 			} else if (app.equals("grouping") && state.equals("voting")) {
-				int id = voteView.getVote();
+				String id = voteView.getVote();
 				srv.sendVote(id);
 			} else if (app.equals("grouping") && state.equals("result")) {
 			} else if (app.equals("profiling") && state.equals("profiling")) {
@@ -182,16 +188,16 @@ public class PlayerActivity extends Activity {
 			Log.i("run", "mainTimer isInited:" + isInited);
 			if (!isInited) {
 				if (!isPaintFrameReady()) {
-					mHandler.postDelayed(mainTimer, 100);
+					mHandler.postDelayed(mainTimer, 400);
 					return;
 				}
-				int player = getPlayer();
+				String player = getPlayer();
 				srv.setPlayer(player);
 			}
 			JSONObject result = srv.getState();
 			if (result == null) {
 				Log.e(getLocalClassName(), "Failed to get state from server.");
-				mHandler.postDelayed(mainTimer, 200);
+				mHandler.postDelayed(mainTimer, 400);
 				return;
 			}
 			String oldapp="";
@@ -208,7 +214,7 @@ public class PlayerActivity extends Activity {
 			Log.i("STATE", "app:" + app + ",state:" + state);
 			if (state.equals(oldstate)&&app.equals(oldapp)) {
 				Log.i("STATE", "no state changed");
-				mHandler.postDelayed(mainTimer, 200);
+				mHandler.postDelayed(mainTimer, 400);
 				return;
 			}
 			if (app.equals("grouping") && state.equals("painting")) {
@@ -225,7 +231,7 @@ public class PlayerActivity extends Activity {
 			} else if (app.equals("main") && state.equals("stop")){
 				mUiHandler.post(uiTimer);
 			}
-			mHandler.postDelayed(mainTimer, 200);
+			mHandler.postDelayed(mainTimer, 400);
 		}
 	};
 
@@ -291,7 +297,7 @@ public class PlayerActivity extends Activity {
 				Toast.makeText(getApplicationContext(), items[item],
 						Toast.LENGTH_SHORT).show();
 				int player = item + 1;
-				setPlayer(player);
+				setPlayer(Integer.toString(player));
 				// Do the post init by mainTimer
 				toInit();
 				return;
@@ -360,7 +366,13 @@ public class PlayerActivity extends Activity {
 		}
 		return super.onOptionsItemSelected(item);
 	}
-
+	@Override
+	public void onBackPressed() {
+		Log.i("FLOW","onBackPressed");
+		mHandler.removeCallbacks(mainTimer);
+		mUiHandler.removeCallbacks(uiTimer);
+		finish();
+	}
 	private static final int REQUEST_CODE = 1;
 	private Bitmap mProfilePhoto;
 	private ImageView profileingView;
@@ -388,11 +400,26 @@ public class PlayerActivity extends Activity {
 				InputStream stream = getContentResolver().openInputStream(
 						data.getData());
 				BitmapFactory.Options options = new BitmapFactory.Options();
+				options.inJustDecodeBounds = true;
+	            BitmapFactory.decodeStream(stream, null, options);
+	            stream.close();
+	            int viewWidth = profileingView.getWidth();
+	            int viewHeight = profileingView.getHeight();
+	            int picWidth = options.outWidth;
+	            int picHeight = options.outHeight;
+	            int sampleWidth = picWidth / viewWidth;
+	            int sampleHeight = picHeight / viewHeight;
+	            int sampleSize = Math.max(Math.max(sampleWidth, sampleHeight),1); 
+	            Log.i("BITMAP","sampleSize="+sampleSize);
+	            Log.i("BITMAP","picWidth="+picWidth);
+	            Log.i("BITMAP","viewWidth="+viewWidth);
+	            options = new BitmapFactory.Options();
+				options.inSampleSize = sampleSize;
 				options.inPurgeable = true;
 				options.inInputShareable = true;
-				options.inSampleSize = 1;
-				mProfilePhoto = BitmapFactory.decodeStream(stream, null,
-						options);
+				stream = getContentResolver().openInputStream(
+						data.getData());
+				mProfilePhoto = BitmapFactory.decodeStream(stream, null, options);
 				stream.close();
 				String a = Helper.getStringFromBitmap(mProfilePhoto);
 				Bitmap b = Helper.getBitmapFromString(a);

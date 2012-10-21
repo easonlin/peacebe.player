@@ -21,14 +21,14 @@ public class VoteView extends ActivityView {
 		super(c);
 	}
 
-	public int getVote() {
+	public String getVote() {
 		// TODO Auto-generated method stub
 		try {
-			return  mCandidate.getJSONObject(mVote).getInt("id");
+			return  mCandidate.getJSONObject(mVote).getString("id");
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return -1;
+			return null;
 		}
 	}
 
