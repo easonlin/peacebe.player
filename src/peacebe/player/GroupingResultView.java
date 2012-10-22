@@ -1,4 +1,4 @@
-package peacebe.user;
+package peacebe.player;
 
 import org.json.JSONException;
 import org.json.JSONObject;

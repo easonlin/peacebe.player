@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-package peacebe.user;
+package peacebe.player;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.SocketAddress;
+import java.net.SocketException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -67,7 +71,18 @@ public class PlayerActivity extends Activity {
 	private String app;
 	private boolean isInited = false;
 	private JSONArray mCandidate;
-
+	private int mPort=11233;
+	private Handler mTeamHandler = new Handler();
+	private HandlerThread mTeamThread;
+	private DatagramSocket mSocket;
+	public String[] getPacket() throws IOException{
+		byte[] buf = new byte[1024];
+		DatagramPacket packet = new DatagramPacket(buf, buf.length);
+		mSocket.receive(packet);
+		String data = new String(buf);
+		String[] params = data.split(":");
+		return params;
+	}
 	public boolean isPaintFrameReady() {
 		int vHeight = paintFrame.getHeight();
 		int vWidth = paintFrame.getWidth();
@@ -115,12 +130,28 @@ public class PlayerActivity extends Activity {
 		Log.i("FLOW","onCreate");
 		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
 		editor = settings.edit();
+		try {
+			mSocket = new DatagramSocket(mPort);
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		try {
+			mSocket.setBroadcast(true);
+		} catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		mTaskThread = new HandlerThread("task");
 		mTaskThread.start();
 		mHandler = new Handler(mTaskThread.getLooper());
+		mTeamThread = new HandlerThread("udp");
+		mTeamThread.start();
+		mTeamHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
 		mHandler.postDelayed(mainTimer, 400);
+		mHandler.postDelayed(teamTimer, 400);
 	}
 
 	private SharedPreferences settings;
@@ -181,6 +212,22 @@ public class PlayerActivity extends Activity {
 			} else if (app.equals("profiling") && state.equals("profiling")) {
 				srv.sendProfile(mProfilePhoto);
 			}
+		}
+	};
+	private Runnable teamTimer = new Runnable() {
+		public void run() {
+			try {
+				String[] params = getPacket();
+				String id = "1";
+				if(params.length > 2){
+					id = params[0];
+				}
+				srv.sendJoin(id);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			mHandler.postDelayed(teamTimer, 400);
 		}
 	};
 	private Runnable mainTimer = new Runnable() {
@@ -371,6 +418,7 @@ public class PlayerActivity extends Activity {
 		Log.i("FLOW","onBackPressed");
 		mHandler.removeCallbacks(mainTimer);
 		mUiHandler.removeCallbacks(uiTimer);
+		mTeamHandler.removeCallbacks(teamTimer);
 		finish();
 	}
 	private static final int REQUEST_CODE = 1;

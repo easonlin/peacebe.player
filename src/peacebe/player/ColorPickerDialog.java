@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package peacebe.user;
+package peacebe.player;
 
 import android.os.Bundle;
 import android.app.Dialog;

@@ -12,7 +12,7 @@
         android:icon="@drawable/peacebe_user"
         android:label="@string/appName" >
         <activity
-            android:name=".PlayerActivity"
+            android:name="peacebe.player.PlayerActivity"
             android:label="@string/appName" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

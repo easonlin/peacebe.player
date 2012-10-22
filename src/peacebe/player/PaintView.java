@@ -1,4 +1,4 @@
-package peacebe.user;
+package peacebe.player;
 
 import peacebe.common.ActivityView;
 import android.content.Context;
