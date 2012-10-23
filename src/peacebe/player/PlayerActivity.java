@@ -16,22 +16,13 @@
 
 package peacebe.player;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.SocketAddress;
-import java.net.SocketException;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import peacebe.user.R;
+import peacebe.player.R;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -46,10 +37,8 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import peacebe.common.ActivityView;
 import peacebe.common.Helper;
 import peacebe.common.IPeaceBeServer;
 import peacebe.common.PeaceBeServer;
@@ -61,7 +50,8 @@ public class PlayerActivity extends Activity {
 	private Button nextButton;
 	private PaintView paintView;
 	private VoteView voteView;
-	private MyImageView groupingResultView;
+	private PhotoView groupingResultView;
+	private PhotoView profilingView;
 	private AlertDialog mTaskDialog;
 	private ProgressBar pgbWaiting;
 	private Handler mHandler;
@@ -71,18 +61,7 @@ public class PlayerActivity extends Activity {
 	private String app;
 	private boolean isInited = false;
 	private JSONArray mCandidate;
-	private int mPort=11233;
-	private Handler mTeamHandler = new Handler();
-	private HandlerThread mTeamThread;
-	private DatagramSocket mSocket;
-	public String[] getPacket() throws IOException{
-		byte[] buf = new byte[1024];
-		DatagramPacket packet = new DatagramPacket(buf, buf.length);
-		mSocket.receive(packet);
-		String data = new String(buf);
-		String[] params = data.split(":");
-		return params;
-	}
+	private TeamHandler mTeamHandler = new TeamHandler();
 	public boolean isPaintFrameReady() {
 		int vHeight = paintFrame.getHeight();
 		int vWidth = paintFrame.getWidth();
@@ -92,14 +71,13 @@ public class PlayerActivity extends Activity {
 			return true;
 		}
 	}
-
 	public void initTaskViews() {
 		int vHeight = paintFrame.getHeight();
 		int vWidth = paintFrame.getWidth();
 		paintView = new PaintView(paintFrame.getContext(), vHeight, vWidth);
 		voteView = new VoteView(paintFrame.getContext(), vHeight, vWidth);
-		profileingView = new MyImageView(paintFrame.getContext());
-		groupingResultView = new MyImageView(paintFrame.getContext());
+		profilingView = new PhotoView(paintFrame.getContext());
+		groupingResultView = new PhotoView(paintFrame.getContext());
 		mTaskDialog = new AlertDialog.Builder(paintFrame.getContext())
 				.setTitle("Task")
 				.setMessage("Draw your favorite animal.")
@@ -110,7 +88,6 @@ public class PlayerActivity extends Activity {
 							}
 						}).create();
 	}
-
 	public void initMainView() {
 		setContentView(R.layout.main);
 		paintFrame = (FrameLayout) findViewById(R.id.paintFrame);
@@ -123,40 +100,24 @@ public class PlayerActivity extends Activity {
 			}
 		});
 	}
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Log.i("FLOW","onCreate");
 		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
 		editor = settings.edit();
-		try {
-			mSocket = new DatagramSocket(mPort);
-		} catch (SocketException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
-			mSocket.setBroadcast(true);
-		} catch (SocketException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+
 		mTaskThread = new HandlerThread("task");
 		mTaskThread.start();
 		mHandler = new Handler(mTaskThread.getLooper());
-		mTeamThread = new HandlerThread("udp");
-		mTeamThread.start();
-		mTeamHandler = new Handler(mTaskThread.getLooper());
+
 		initMainView();
 		// Do the post init by main timer.
 		mHandler.postDelayed(mainTimer, 400);
-		mHandler.postDelayed(teamTimer, 400);
+		mTeamHandler.start();
 	}
-
 	private SharedPreferences settings;
 	private SharedPreferences.Editor editor;
-
 	public String getPlayer() {
 		String player = "1";
 		try {
@@ -166,12 +127,10 @@ public class PlayerActivity extends Activity {
 		}
 		return player;
 	}
-
 	public void setPlayer(String player) {
 		editor.putString("player", player);
 		editor.commit();
 	}
-
 	private Runnable uiTimer = new Runnable() {
 		public void run() {
 			Log.i("run", "uiTimer");
@@ -210,24 +169,9 @@ public class PlayerActivity extends Activity {
 				srv.sendVote(id);
 			} else if (app.equals("grouping") && state.equals("result")) {
 			} else if (app.equals("profiling") && state.equals("profiling")) {
-				srv.sendProfile(mProfilePhoto);
+				Bitmap profilePhoto = profilingView.getPhoto();
+				srv.sendProfile(profilePhoto);
 			}
-		}
-	};
-	private Runnable teamTimer = new Runnable() {
-		public void run() {
-			try {
-				String[] params = getPacket();
-				String id = "1";
-				if(params.length > 2){
-					id = params[0];
-				}
-				srv.sendJoin(id);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			mHandler.postDelayed(teamTimer, 400);
 		}
 	};
 	private Runnable mainTimer = new Runnable() {
@@ -283,12 +227,12 @@ public class PlayerActivity extends Activity {
 	};
 
 	public void uiProfiling() {
-		pickImage();
 		mTaskDialog.dismiss();
 		paintFrame.removeAllViews();
-		paintFrame.addView(profileingView);
+		paintFrame.addView(profilingView);
 		nextButton.setVisibility(Button.VISIBLE);
 		pgbWaiting.setVisibility(ProgressBar.GONE);
+		profilingView.pickImage();
 	}
 
 	public void uiMain() {
@@ -367,28 +311,7 @@ public class PlayerActivity extends Activity {
 		 *****/
 		return true;
 	}
-
-	public class MyImageView extends ImageView implements ViewOption {
-
-		public MyImageView(Context context) {
-			super(context);
-			// TODO Auto-generated constructor stub
-		}
-
-		public boolean onOptionsItemSelected(MenuItem item) {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		public void onPrepareOptionsMenu(Menu menu) {
-			// TODO Auto-generated method stub
-
-		}
-
-	};
-
 	private static final int LEAVE_MENU_ID = Menu.FIRST + 6;
-
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
 		menu.clear();
@@ -399,7 +322,6 @@ public class PlayerActivity extends Activity {
 		menu.add(0, LEAVE_MENU_ID, 0, "Player").setShortcut('6', 'l');
 		return super.onPrepareOptionsMenu(menu);
 	}
-
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		ViewOption view = (ViewOption) paintFrame.getChildAt(0);
@@ -418,69 +340,20 @@ public class PlayerActivity extends Activity {
 		Log.i("FLOW","onBackPressed");
 		mHandler.removeCallbacks(mainTimer);
 		mUiHandler.removeCallbacks(uiTimer);
-		mTeamHandler.removeCallbacks(teamTimer);
+		mTeamHandler.close();
 		finish();
 	}
-	private static final int REQUEST_CODE = 1;
-	private Bitmap mProfilePhoto;
-	private ImageView profileingView;
-
-	public void pickImage() {
-		Intent intent = new Intent();
-		intent.setType("image/*");
-		intent.setAction(Intent.ACTION_GET_CONTENT);
-		intent.addCategory(Intent.CATEGORY_OPENABLE);
-		startActivityForResult(intent, REQUEST_CODE);
-	}
-
 	public void toInit() {
 		isInited = false;
 	}
-
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if (requestCode == REQUEST_CODE && resultCode == Activity.RESULT_OK)
-			try {
-				// We need to recyle unused bitmaps
-				if (mProfilePhoto != null) {
-					mProfilePhoto.recycle();
-				}
-				InputStream stream = getContentResolver().openInputStream(
-						data.getData());
-				BitmapFactory.Options options = new BitmapFactory.Options();
-				options.inJustDecodeBounds = true;
-	            BitmapFactory.decodeStream(stream, null, options);
-	            stream.close();
-	            int viewWidth = profileingView.getWidth();
-	            int viewHeight = profileingView.getHeight();
-	            int picWidth = options.outWidth;
-	            int picHeight = options.outHeight;
-	            int sampleWidth = picWidth / viewWidth;
-	            int sampleHeight = picHeight / viewHeight;
-	            int sampleSize = Math.max(Math.max(sampleWidth, sampleHeight),1); 
-	            Log.i("BITMAP","sampleSize="+sampleSize);
-	            Log.i("BITMAP","picWidth="+picWidth);
-	            Log.i("BITMAP","viewWidth="+viewWidth);
-	            options = new BitmapFactory.Options();
-				options.inSampleSize = sampleSize;
-				options.inPurgeable = true;
-				options.inInputShareable = true;
-				stream = getContentResolver().openInputStream(
-						data.getData());
-				mProfilePhoto = BitmapFactory.decodeStream(stream, null, options);
-				stream.close();
-				String a = Helper.getStringFromBitmap(mProfilePhoto);
-				Bitmap b = Helper.getBitmapFromString(a);
-				profileingView.setImageBitmap(b);
-				// profileingView.setImageBitmap(mProfilePhoto);
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		else {
-			pickImage();
+		ViewOption view = (ViewOption) paintFrame.getChildAt(0);
+		if (view != null) {
+			view.onActivityResult(requestCode, resultCode, data);
 		}
 		super.onActivityResult(requestCode, resultCode, data);
 	}
+
+
 }

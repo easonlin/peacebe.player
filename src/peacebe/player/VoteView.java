@@ -8,6 +8,7 @@ import peacebe.common.Helper;
 
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -103,6 +104,11 @@ public class VoteView extends ActivityView {
 	}
 
 	public void onPrepareOptionsMenu(Menu menu) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// TODO Auto-generated method stub
 		
 	}

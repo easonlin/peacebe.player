@@ -2,6 +2,7 @@ package peacebe.player;
 
 import peacebe.common.ActivityView;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
@@ -165,4 +166,8 @@ public class PaintView extends ActivityView
     public void colorChanged(int color) {
         mPaint.setColor(color);
     }
+	public void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// TODO Auto-generated method stub
+		
+	}
 }
