@@ -59,6 +59,7 @@ public class AppGrouping implements IApp {
 		if (app.equals("grouping") && state.equals("painting")) {
 			Bitmap bitmap = paintView.getBitmap();
 			srvState.srv.sendPaint(bitmap);
+			paintView.resetBitmap();
 		} else if (app.equals("grouping") && state.equals("voting")) {
 			String id = voteView.getVote();
 			srvState.srv.sendVote(id);

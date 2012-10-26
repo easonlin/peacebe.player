@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.EmbossMaskFilter;
 import android.graphics.MaskFilter;
 import android.graphics.Paint;
@@ -169,5 +170,10 @@ public class PaintView extends ActivityView
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// TODO Auto-generated method stub
 		
+	}
+	public void resetBitmap() {
+		// TODO Auto-generated method stub
+		mPath.reset();
+		mCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
 	}
 }
