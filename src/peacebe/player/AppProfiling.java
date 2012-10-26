@@ -15,26 +15,46 @@ public class AppProfiling implements IApp {
 	public void srv(String app, String state, SrvState srvState) {
 		// TODO Auto-generated method stub
 		if (app.equals("profiling") && state.equals("profiling")) {
+		} else if  (app.equals("profiling") && state.equals("v_profiling")){
+			
+		} else if  (app.equals("profiling") && state.equals("w_profiling")){
+			
 		}
 	}
-
+	private boolean isTeaming;
 	public void ui(String app, String state, UiState uiState) {
 		// TODO Auto-generated method stub
 		if (app.equals("profiling") && state.equals("profiling")) {
-			uiProfiling(uiState);
+			if (isTeaming){
+				uiTeaming(uiState);
+			} else {
+				uiProfiling(uiState);
+			}
+		} else if  (app.equals("profiling") && state.equals("v_profiling")){
+			
+		} else if  (app.equals("profiling") && state.equals("w_profiling")){
+			
+		} else {
+			uiState.isMain=true;
 		}
 	}
 
 	public void send(String app, String state, SrvState srvState) {
 		// TODO Auto-generated method stub
 		if (app.equals("profiling") && state.equals("profiling")) {
+			if (isTeaming){
 			Bitmap profilePhoto = profilingView.getPhoto();
 			srvState.srv.sendProfile(profilePhoto);
+			}
 		}
 	}
 
 	private void uiProfiling(UiState uiState) {
-		uiState.mPaintFrame.addView(profilingView);
+		uiState.view = profilingView;
 		profilingView.pickImage();
+	}
+	TeamView teamView;
+	private void uiTeaming(UiState uiState){
+		uiState.view = teamView;
 	}
 }

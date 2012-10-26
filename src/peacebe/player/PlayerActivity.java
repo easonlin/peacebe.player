@@ -56,7 +56,7 @@ public class PlayerActivity extends Activity {
 	private String state;
 	private String app;
 	private boolean isInited = false;
-	private TeamHandler mTeamHandler = new TeamHandler();
+	//private TeamHandler mTeamHandler = new TeamHandler();
 	public boolean isPaintFrameReady() {
 		int vHeight = paintFrame.getHeight();
 		int vWidth = paintFrame.getWidth();
@@ -106,7 +106,7 @@ public class PlayerActivity extends Activity {
 		initMainView();
 		// Do the post init by main timer.
 		mHandler.postDelayed(mainTimer, 400);
-		mTeamHandler.start();
+		//mTeamHandler.start();
 	}
 	private SharedPreferences settings;
 	private SharedPreferences.Editor editor;
@@ -128,16 +128,15 @@ public class PlayerActivity extends Activity {
 			Log.i("run", "uiTimer");
 			if (!isInited) {
 				initTaskViews();
-				uiMain();
 				isInited = true;
 				Log.i("run", "uiTImer inited");
 			}
 			if (app.equals("grouping")){
-				UiState uiState = new UiState(paintFrame);
+				UiState uiState = new UiState();
 				mAppGrouping.ui(app, state, uiState);
 				uiTask(uiState);
 			} else if (app.equals("profiling")){
-				UiState uiState = new UiState(paintFrame);
+				UiState uiState = new UiState();
 				mAppGrouping.ui(app, state, uiState);
 				uiTask(uiState);
 			} else {
@@ -220,16 +219,19 @@ public class PlayerActivity extends Activity {
 		public IPeaceBeServer srv;
 	}
 	class UiState {
-		public UiState(FrameLayout paintFrame) {
-			// TODO Auto-generated constructor stub
-			mPaintFrame = paintFrame;
-		}
-		public FrameLayout mPaintFrame;
 		public boolean isBlock=false;
 		public boolean isDialog=false;
+		public boolean isMain=false;
+		public View view=null;
 	};
 	public void uiTask(UiState state){
-		paintFrame.removeAllViews();	
+		if(state.isMain){
+			uiMain();
+			return;
+		} 
+		// else uiTask()
+		paintFrame.removeAllViews();
+		paintFrame.addView(state.view);
 		if (state.isBlock){
 			nextButton.setVisibility(Button.GONE);
 			pgbWaiting.setVisibility(ProgressBar.VISIBLE);
@@ -243,8 +245,6 @@ public class PlayerActivity extends Activity {
 			mTaskDialog.dismiss();
 		}
 	}
-
-
 	public void uiMain() {
 		mTaskDialog.dismiss();
 		paintFrame.removeAllViews();
@@ -314,7 +314,7 @@ public class PlayerActivity extends Activity {
 		Log.i("FLOW","onBackPressed");
 		mHandler.removeCallbacks(mainTimer);
 		mUiHandler.removeCallbacks(uiTimer);
-		mTeamHandler.close();
+		//mTeamHandler.close();
 		finish();
 	}
 	public void toInit() {

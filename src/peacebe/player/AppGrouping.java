@@ -48,7 +48,9 @@ public class AppGrouping implements IApp {
 			uiVoting(uiState);
 		} else if (app.equals("grouping") && state.equals("result")) {
 			uiResult(uiState);
-		}	
+		} else {
+			uiState.isMain = true;
+		}
 	}
 	/* (non-Javadoc)
 	 * @see peacebe.player.IApp#send(java.lang.String, java.lang.String, peacebe.player.PlayerActivity.SrvState)
@@ -79,7 +81,7 @@ public class AppGrouping implements IApp {
 	 * @see peacebe.player.IApp#uiPainting(peacebe.player.PlayerActivity.UiState)
 	 */
 	private void uiPainting(UiState uiState) {
-		uiState.mPaintFrame.addView(paintView);
+		uiState.view = paintView;
 		uiState.isDialog = true;
 	}
 
@@ -88,13 +90,13 @@ public class AppGrouping implements IApp {
 	 */
 	private void uiVoting(UiState uiState) {
 		voteView.setCandidate(mCandidate);
-		uiState.mPaintFrame.addView(voteView);
+		uiState.view = voteView;
 	}
 	/* (non-Javadoc)
 	 * @see peacebe.player.IApp#uiResult(peacebe.player.PlayerActivity.UiState)
 	 */
 	private void uiResult(UiState uiState) {
-		uiState.mPaintFrame.addView(groupingResultView);
+		uiState.view = groupingResultView;
 		groupingResultView.setImageBitmap(mBitmap);
 		uiState.isBlock = true;
 	}
