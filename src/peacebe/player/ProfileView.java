@@ -4,23 +4,46 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
-import peacebe.common.ViewOption;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RadioGroup;
+import peacebe.common.ViewOption;
 
-public class PhotoView extends ImageView implements ViewOption {
+//public class ProfileView extends ActivityViewGroup {
+public class ProfileView extends FrameLayout implements ViewOption {
+	ImageView mPhotoView;
+	RadioGroup mMaleView;
+	EditText mNameView;
+	View profilingView;
 	private static final int REQUEST_CODE = 1;
-	private Bitmap mProfilePhoto;
-	public PhotoView(Context context) {
+	private Bitmap mProfilePhoto=null;
+	public ProfileView(Context context) {
 		super(context);
 		// TODO Auto-generated constructor stub
+		LayoutInflater inflater = (LayoutInflater) this.getContext()
+				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+		profilingView = inflater.inflate(R.layout.profiling, this, false);
+		mPhotoView = (ImageView) profilingView.findViewById(R.id.profilingPhoto);
+		mPhotoView.setOnClickListener(new OnClickListener() {
+			public void onClick(View arg0) {
+				// TODO Auto-generated method stub
+				pickImage();
+			}
+		});
+		mMaleView = (RadioGroup) profilingView.findViewById(R.id.radioGroupMale);
+		mNameView = (EditText) profilingView.findViewById(R.id.editName);
+		this.addView(profilingView);
 	}
 
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -57,8 +80,8 @@ public class PhotoView extends ImageView implements ViewOption {
 	            int viewHeight = getHeight();
 	            int picWidth = options.outWidth;
 	            int picHeight = options.outHeight;
-	            int sampleWidth = picWidth / viewWidth;
-	            int sampleHeight = picHeight / viewHeight;
+	            int sampleWidth = picWidth / viewWidth * 2;
+	            int sampleHeight = picHeight / viewHeight * 2;
 	            int sampleSize = Math.max(Math.max(sampleWidth, sampleHeight),1); 
 	            Log.i("BITMAP","sampleSize="+sampleSize);
 	            Log.i("BITMAP","picWidth="+picWidth);
@@ -70,7 +93,7 @@ public class PhotoView extends ImageView implements ViewOption {
 				stream = getContext().getContentResolver().openInputStream(data.getData());
 				mProfilePhoto = BitmapFactory.decodeStream(stream, null, options);
 				stream.close();
-				setImageBitmap(mProfilePhoto);
+				mPhotoView.setImageBitmap(mProfilePhoto);
 				// profileingView.setImageBitmap(mProfilePhoto);
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
@@ -78,7 +101,6 @@ public class PhotoView extends ImageView implements ViewOption {
 				e.printStackTrace();
 			}
 		else {
-			pickImage();
 		}
 	}
 
@@ -86,4 +108,23 @@ public class PhotoView extends ImageView implements ViewOption {
 		// TODO Auto-generated method stub
 		return mProfilePhoto;
 	}
-};
+
+	public String getName() {
+		// TODO Auto-generated method stub
+		return mNameView.getText().toString();
+	}
+
+	public String getMale() {
+		// TODO Auto-generated method stub
+		int id = mMaleView.getCheckedRadioButtonId();
+		Log.i("ui", "getChecked Radio Button id is " + id);
+		if (id==R.id.radioMale){
+			return "boy";
+		}
+		else if (id==R.id.radioFemale){
+			return "girl";
+		} else {
+			return "";
+		}
+	}
+}

@@ -56,10 +56,11 @@ public class PlayerActivity extends Activity {
 	private String mApp;
 	private boolean mIsInited = false;
 	private boolean mIsTaskClosed = false;
-	private int mTaskDelayed=600;
+	private int mTaskDelayed=1000;
 	//private TeamHandler mTeamHandler = new TeamHandler();
 	class SrvState {
 		public IPeaceBeServer srv;
+		public boolean redo = false;
 		public SrvState(IPeaceBeServer isrv) {
 			srv = isrv;
 		}
@@ -79,13 +80,25 @@ public class PlayerActivity extends Activity {
 				Log.i("run", "uiTImer inited");
 			}
 			if (mApp.equals("grouping")){
+				Log.i("run", "ui grouping");
 				UiState uiState = new UiState();
 				mAppGrouping.ui(mApp, mState, uiState);
 				uiTask(uiState);
 			} else if (mApp.equals("profiling")){
+				Log.i("run", "ui profiling");
 				UiState uiState = new UiState();
-				mAppGrouping.ui(mApp, mState, uiState);
+				mAppProfiling.ui(mApp, mState, uiState);
 				uiTask(uiState);
+				/*ProfileView gView = new ProfileView(paintFrame.getContext());
+				//FrameLayout gView = new FrameLayout(paintFrame.getContext());
+				LayoutInflater inflater = (LayoutInflater) paintFrame.getContext()
+						.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+				//View profilingView = inflater.inflate(R.layout.profiling, paintFrame, false);
+				View profilingView = inflater.inflate(R.layout.profiling, gView, false);
+				
+				gView.addView(profilingView);
+				paintFrame.addView(gView);
+				//paintFrame.addView(profilingView);*/
 			} else {
 				uiMain();
 			}
@@ -99,12 +112,14 @@ public class PlayerActivity extends Activity {
 						"Button should not be clicked in main state");
 				return;
 			}
+			SrvState srvState = new SrvState(srv);
 			if (mApp.equals("grouping")){
-				SrvState srvState = new SrvState(srv);
 				mAppGrouping.send(mApp, mState, srvState);
 			} else if (mApp.equals("profiling") ){
-				SrvState srvState = new SrvState(srv);
 				mAppProfiling.send(mApp, mState, srvState);
+			}
+			if(srvState.redo){
+				mState = "redo";
 			}
 		}
 	};
@@ -155,6 +170,7 @@ public class PlayerActivity extends Activity {
 				mAppProfiling.srv(mApp, mState, srvState);
 			} else if (mApp.equals("main") && mState.equals("stop")){
 			}
+			Log.i("run","do uiRunner");
 			mUiHandler.post(uiRunner);
 			mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
 		}
@@ -199,6 +215,7 @@ public class PlayerActivity extends Activity {
 		Log.i("FLOW","onCreate");
 		mSetting = new Setting(this);
 		srv.setPlayer(mSetting.getPlayer());
+		srv.registerPlayer();
 		mAppGrouping = new AppGrouping();
 		mAppProfiling = new AppProfiling();
 		mTaskThread = new HandlerThread("task");
