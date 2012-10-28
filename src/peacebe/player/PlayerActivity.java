@@ -16,17 +16,13 @@
 
 package peacebe.player;
 
-import java.util.UUID;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import peacebe.player.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -41,22 +37,128 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 import peacebe.common.IPeaceBeServer;
 import peacebe.common.PeaceBeServer;
+import peacebe.common.Setting;
 import peacebe.common.ViewOption;
 
 public class PlayerActivity extends Activity {
 	private IPeaceBeServer srv = PeaceBeServer.factoryGet();
 	private FrameLayout paintFrame;
 	private Button nextButton;
-	private AlertDialog mTaskDialog;
+	private AlertDialog taskDialog;
 	private ProgressBar pgbWaiting;
 	private IApp mAppGrouping;
-	private Handler mHandler;
+	private IApp mAppProfiling;
+	private Handler mTaskHandler;
 	private Handler mUiHandler = new Handler();
 	private HandlerThread mTaskThread;
-	private String state;
-	private String app;
-	private boolean isInited = false;
+	private Setting mSetting;
+	private String mState;
+	private String mApp;
+	private boolean mIsInited = false;
+	private boolean mIsTaskClosed = false;
+	private int mTaskDelayed=600;
 	//private TeamHandler mTeamHandler = new TeamHandler();
+	class SrvState {
+		public IPeaceBeServer srv;
+		public SrvState(IPeaceBeServer isrv) {
+			srv = isrv;
+		}
+	}
+	class UiState {
+		public boolean isBlock=false;
+		public boolean isDialog=false;
+		public boolean isMain=false;
+		public View view=null;
+	};
+	private Runnable uiRunner = new Runnable() {
+		public void run() {
+			Log.i("run", "uiTimer");
+			if (!mIsInited) {
+				initTaskViews();
+				mIsInited = true;
+				Log.i("run", "uiTImer inited");
+			}
+			if (mApp.equals("grouping")){
+				UiState uiState = new UiState();
+				mAppGrouping.ui(mApp, mState, uiState);
+				uiTask(uiState);
+			} else if (mApp.equals("profiling")){
+				UiState uiState = new UiState();
+				mAppGrouping.ui(mApp, mState, uiState);
+				uiTask(uiState);
+			} else {
+				uiMain();
+			}
+		}
+	};
+	private Runnable sendRunner = new Runnable() {
+		public void run() {
+			Log.i("run", "sendRunner");
+			if (mState.equals("main")) {
+				Log.e(getLocalClassName(),
+						"Button should not be clicked in main state");
+				return;
+			}
+			if (mApp.equals("grouping")){
+				SrvState srvState = new SrvState(srv);
+				mAppGrouping.send(mApp, mState, srvState);
+			} else if (mApp.equals("profiling") ){
+				SrvState srvState = new SrvState(srv);
+				mAppProfiling.send(mApp, mState, srvState);
+			}
+		}
+	};
+	private Runnable taskRunner = new Runnable() {
+		public void run() {
+			if(mIsTaskClosed){
+				Log.i("run","taskRunner is closed");
+				return;
+			}
+			Log.i("run", "taskTimer isInited:" + mIsInited);
+			if (!mIsInited) {
+				if (!isPaintFrameReady()) {
+					mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
+					return;
+				}
+			}
+			JSONObject result = srv.getState();
+			if (result == null) {
+				Log.e(getLocalClassName(), "Failed to get state from server.");
+				mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
+				return;
+			}
+			String oldapp=null;
+			String oldstate=null;
+			try {
+				oldapp=mApp;
+				oldstate=mState;
+				mApp = result.getString("app");
+				mState = result.getString("state");
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				// e.printStackTrace();
+				Log.e(getLocalClassName(), "Failed to parse app and state.");
+				mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
+				return;
+			}
+			Log.i("STATE", "app:" + mApp + ",state:" + mState);
+			if (mState.equals(oldstate)&&mApp.equals(oldapp)) {
+				Log.i("STATE", "no state changed");
+				mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
+				return;
+			}
+			if (mApp.equals("grouping")) {
+				SrvState srvState = new SrvState(srv);
+				mAppGrouping.srv(mApp, mState, srvState);
+			} else if (mApp.equals("profiling")) {
+				SrvState srvState = new SrvState(srv);
+				mAppProfiling.srv(mApp, mState, srvState);
+			} else if (mApp.equals("main") && mState.equals("stop")){
+			}
+			mUiHandler.post(uiRunner);
+			mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
+		}
+	};
 	public boolean isPaintFrameReady() {
 		int vHeight = paintFrame.getHeight();
 		int vWidth = paintFrame.getWidth();
@@ -66,7 +168,6 @@ public class PlayerActivity extends Activity {
 			return true;
 		}
 	}
-	AppProfiling mAppProfiling;
 	public void initTaskViews() {
 		mAppGrouping.init(paintFrame);
 		mAppProfiling.init(paintFrame);
@@ -79,10 +180,10 @@ public class PlayerActivity extends Activity {
 		nextButton.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
 				uiMain();
-				mHandler.post(onClick);
+				mTaskHandler.post(sendRunner);
 			}
 		});
-		mTaskDialog = new AlertDialog.Builder(paintFrame.getContext())
+		taskDialog = new AlertDialog.Builder(paintFrame.getContext())
 		.setTitle("Task")
 		.setMessage("Draw your favorite animal.")
 		.setPositiveButton("Yes",
@@ -96,134 +197,19 @@ public class PlayerActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Log.i("FLOW","onCreate");
-		settings = this.getPreferences(MODE_WORLD_WRITEABLE);
-		editor = settings.edit();
+		mSetting = new Setting(this);
+		srv.setPlayer(mSetting.getPlayer());
 		mAppGrouping = new AppGrouping();
 		mAppProfiling = new AppProfiling();
 		mTaskThread = new HandlerThread("task");
 		mTaskThread.start();
-		mHandler = new Handler(mTaskThread.getLooper());
+		mTaskHandler = new Handler(mTaskThread.getLooper());
 		initMainView();
 		// Do the post init by main timer.
-		mHandler.postDelayed(mainTimer, 400);
+		mTaskHandler.postDelayed(taskRunner, mTaskDelayed);
 		//mTeamHandler.start();
 	}
-	private SharedPreferences settings;
-	private SharedPreferences.Editor editor;
-	public String getPlayer() {
-		String player = UUID.randomUUID().toString();
-		try {
-			player = settings.getString("player", player);
-		} catch (ClassCastException e) {
-			e.printStackTrace();
-		}
-		return player;
-	}
-	public void setPlayer(String player) {
-		editor.putString("player", player);
-		editor.commit();
-	}
-	private Runnable uiTimer = new Runnable() {
-		public void run() {
-			Log.i("run", "uiTimer");
-			if (!isInited) {
-				initTaskViews();
-				isInited = true;
-				Log.i("run", "uiTImer inited");
-			}
-			if (app.equals("grouping")){
-				UiState uiState = new UiState();
-				mAppGrouping.ui(app, state, uiState);
-				uiTask(uiState);
-			} else if (app.equals("profiling")){
-				UiState uiState = new UiState();
-				mAppGrouping.ui(app, state, uiState);
-				uiTask(uiState);
-			} else {
-				uiMain();
-			}
-		}
-	};
-	private Runnable onClick = new Runnable() {
-		public void run() {
-			Log.i("run", "onClick");
-			if (state.equals("main")) {
-				Log.e(getLocalClassName(),
-						"Button should not be clicked in main state");
-				return;
-			}
-			if (app.equals("grouping")){
-				SrvState srvState = new SrvState(srv);
-				mAppGrouping.send(app, state, srvState);
-			} else if (app.equals("profiling") ){
-				SrvState srvState = new SrvState(srv);
-				mAppProfiling.send(app, state, srvState);
-			}
-		}
-	};
-	private Runnable mainTimer = new Runnable() {
-		public void run() {
-			Log.i("run", "mainTimer isInited:" + isInited);
-			if (!isInited) {
-				if (!isPaintFrameReady()) {
-					mHandler.postDelayed(mainTimer, 400);
-					return;
-				}
-				String player = getPlayer();
-				srv.setPlayer(player);
-			}
-			JSONObject result = srv.getState();
-			if (result == null) {
-				Log.e(getLocalClassName(), "Failed to get state from server.");
-				mHandler.postDelayed(mainTimer, 400);
-				return;
-			}
-			String oldapp=null;
-			String oldstate=null;
-			try {
-				oldapp=app;
-				oldstate=state;
-				app = result.getString("app");
-				state = result.getString("state");
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				// e.printStackTrace();
-				Log.e(getLocalClassName(), "Failed to parse app and state.");
-				mHandler.postDelayed(mainTimer, 400);
-				return;
-			}
-			Log.i("STATE", "app:" + app + ",state:" + state);
-			if (state.equals(oldstate)&&app.equals(oldapp)) {
-				Log.i("STATE", "no state changed");
-				mHandler.postDelayed(mainTimer, 400);
-				return;
-			}
-			if (app.equals("grouping")) {
-				SrvState srvState = new SrvState(srv);
-				mAppGrouping.srv(app, state, srvState);
-			} else if (app.equals("profiling")) {
-				SrvState srvState = new SrvState(srv);
-				mAppProfiling.srv(app, state, srvState);
-			} else if (app.equals("main") && state.equals("stop")){
-			}
-			mUiHandler.post(uiTimer);
-			mHandler.postDelayed(mainTimer, 400);
-		}
-	};
-	class SrvState {
-		public SrvState(IPeaceBeServer isrv) {
-			// TODO Auto-generated constructor stub
-			srv = isrv;
-		}
 
-		public IPeaceBeServer srv;
-	}
-	class UiState {
-		public boolean isBlock=false;
-		public boolean isDialog=false;
-		public boolean isMain=false;
-		public View view=null;
-	};
 	public void uiTask(UiState state){
 		if(state.isMain){
 			uiMain();
@@ -240,13 +226,13 @@ public class PlayerActivity extends Activity {
 			pgbWaiting.setVisibility(ProgressBar.GONE);
 		}
 		if(state.isDialog){
-			mTaskDialog.show();
+			taskDialog.show();
 		} else {
-			mTaskDialog.dismiss();
+			taskDialog.dismiss();
 		}
 	}
 	public void uiMain() {
-		mTaskDialog.dismiss();
+		taskDialog.dismiss();
 		paintFrame.removeAllViews();
 		pgbWaiting.setVisibility(ProgressBar.VISIBLE);
 		nextButton.setVisibility(Button.GONE);
@@ -262,7 +248,7 @@ public class PlayerActivity extends Activity {
 				Toast.makeText(getApplicationContext(), items[item],
 						Toast.LENGTH_SHORT).show();
 				int player = item + 1;
-				setPlayer(Integer.toString(player));
+				srv.setPlayer(Integer.toString(player));
 				// Do the post init by mainTimer
 				toInit();
 				return;
@@ -312,13 +298,14 @@ public class PlayerActivity extends Activity {
 	@Override
 	public void onBackPressed() {
 		Log.i("FLOW","onBackPressed");
-		mHandler.removeCallbacks(mainTimer);
-		mUiHandler.removeCallbacks(uiTimer);
+		mTaskHandler.removeCallbacks(taskRunner);
+		mUiHandler.removeCallbacks(uiRunner);
+		mIsTaskClosed = true;
 		//mTeamHandler.close();
 		finish();
 	}
 	public void toInit() {
-		isInited = false;
+		mIsInited = false;
 	}
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
